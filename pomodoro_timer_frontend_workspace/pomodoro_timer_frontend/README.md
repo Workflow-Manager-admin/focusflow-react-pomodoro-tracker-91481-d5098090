@@ -53,6 +53,27 @@ Common components include:
 - Navigation (`.navbar`)
 - Typography (`.title`, `.subtitle`, `.description`)
 
+## Supabase Integration
+
+This project is pre-configured to use [Supabase](https://supabase.com/) for authentication and future backend storage.
+
+### Credentials & Environment
+
+- Supabase credentials are stored in `.env`:
+  - `REACT_APP_SUPABASE_URL`
+  - `REACT_APP_SUPABASE_ANON_KEY`
+- Client is initialized in `src/supabaseClient.js`.  
+  Import it anywhere in your React code:
+  ```js
+  import supabase from './supabaseClient';
+  ```
+
+- To add features (auth, storage): use the exported `supabase` client.
+
+**See `../assets/supabase.md` for detailed integration notes.**
+
+---
+
 ## Learn More
 
 To learn React, check out the [React documentation](https://reactjs.org/).
