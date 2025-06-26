@@ -154,21 +154,29 @@ function App() {
   useEffect(() => {
     if (timerActive && intervalRef.current === null) {
       // Start interval if timer is active and not already running
-      console.debug("[Pomodoro] Timer interval effect: timerActive", timerActive, "Starting interval. Current timeLeft:", timeLeft);
+      console.debug("[Pomodoro] Timer interval effect: timerActive", timerActive, "Starting interval. Current timeLeft:", timeLeft, "intervalRef:", intervalRef.current);
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
-          // Only tick if timer is still active!
-          // Prevents ghost tics if paused in the middle of an interval
+          // Only tick if timer is still active (get latest value)!
           if (!timerActive || prev <= 0) {
+            if (!timerActive && prev > 0) {
+              // Defensive debug: Should never tick if paused
+              console.debug("[Pomodoro] WARNING: Interval tick fired after paused! prev=", prev);
+            }
             return prev;
           }
-          return prev - 1;
+          const next = prev - 1;
+          if ((next % 10) === 0 || next < 10) {
+            // More frequent logging at end for debug
+            console.debug(`[Pomodoro] Tick: timeLeft now ${next}s`);
+          }
+          return next;
         });
       }, 1000);
     }
     if (!timerActive && intervalRef.current !== null) {
       // Clear interval if timer is not active
-      console.debug("[Pomodoro] Timer interval effect: timerActive is FALSE. Clearing interval. Current timeLeft:", timeLeft);
+      console.debug("[Pomodoro] Timer interval effect: timerActive is FALSE. Clearing interval. Current timeLeft:", timeLeft, "intervalRef:", intervalRef.current);
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
@@ -180,7 +188,7 @@ function App() {
         console.debug("[Pomodoro] Timer interval CLEANUP in effect cleanup");
       }
     };
-  }, [timerActive, timeLeft]); // Add timeLeft for robust log context and to ensure ticks don't persist after time up
+  }, [timerActive]); // Remove timeLeft dependency to not restart/cancel interval with every tick, only reacts to active/paused
 
   // Auto-switch session on time up
   useEffect(() => {
@@ -197,9 +205,17 @@ function App() {
       console.debug("[Pomodoro] Start pressed but timer already active. Ignored. timeLeft=", timeLeft);
       return;
     }
-    console.debug("[Pomodoro] Start/Resume pressed. Setting timerActive TRUE, no change to timeLeft. Prev timeLeft=", timeLeft);
+    // If timer was paused at 0, reset for new session, else always resume
+    if (timeLeft <= 0) {
+      // Defensive: resume/start should not start a 0s session
+      const resetTime = durations[mode] * 60;
+      setTimeLeft(resetTime);
+      console.debug("[Pomodoro] Start/Resume pressed, but timeLeft was 0 or less. Resetting to", resetTime, "for mode=", mode);
+    } else {
+      console.debug("[Pomodoro] Start/Resume pressed. Setting timerActive TRUE, no change to timeLeft. Prev timeLeft=", timeLeft);
+    }
     setTimerActive(true);
-    // Do not setTimeLeft here! Always resumes from current.
+    // Do not setTimeLeft here if already valid; only set if 0-second edge case above.
   }
   // PUBLIC_INTERFACE
   function handlePause() {
@@ -208,22 +224,35 @@ function App() {
       console.debug("[Pomodoro] Pause pressed but already paused/stopped. Ignored. timeLeft=", timeLeft);
       return;
     }
+    // Defensive: Pausing at 0 triggers an extra reset in a rare race, so clamp to 0
+    if (timeLeft <= 0) {
+      setTimeLeft(0);
+      console.debug("[Pomodoro] Pause pressed, but timeLeft was already expired. Clamping to 0.");
+    }
     console.debug("[Pomodoro] Pause pressed. Setting timerActive FALSE. Preserving current timeLeft =", timeLeft);
     setTimerActive(false);
-    // Never setTimeLeft here.
+    // Never setTimeLeft here (except for 0-edge case).
   }
   // PUBLIC_INTERFACE
   function handleReset() {
-    console.debug("[Pomodoro] Reset pressed. For mode=", mode, "Will set timeLeft to", durations[mode] * 60);
+    // Robust: always log the edge case if Reset is pressed while running/paused
+    if (timerActive) {
+      console.debug("[Pomodoro] Reset pressed DURING ACTIVE session. Pausing and resetting.");
+    } else {
+      console.debug("[Pomodoro] Reset pressed. For mode=", mode, "Will set timeLeft to", durations[mode] * 60);
+    }
     setTimerActive(false);
     setTimeLeft(durations[mode] * 60);
-    // timeLeft reset to default duration
+    // Defensive: Clamp to default duration for current mode.
   }
 
   // PUBLIC_INTERFACE
   function handleSwitchMode(newMode) {
     // Don't switch if already current mode
-    if (newMode === mode) return;
+    if (newMode === mode) {
+      console.debug("[Pomodoro] Mode switch pressed but mode already set:", newMode);
+      return;
+    }
 
     // Only switch mode immediately if timer is NOT running.
     // If paused (not running), and the mode is switched, preserve timeLeft (useEffect will NOT reset unless timeLeft is already at a "fresh" duration value).
@@ -274,17 +303,17 @@ function App() {
       },
     ]);
 
+    console.debug("[Pomodoro] handleSessionEnd called for mode", mode, "auto-switch + logging");
     if (mode === "pomodoro") {
       setPomodorosCompletedToday((p) => p + 1);
       // Auto-switch to break
-      handleSwitchMode(
-        (sessionHistory.filter((s) => s.mode === "pomodoro").length + 1) %
-          4 ===
-          0
-          ? "long_break"
-          : "short_break"
-      );
+      // By referencing sessionHistory directly here, the count could be stale, so compute count as p + 1
+      const pomCount = sessionHistory.filter((s) => s.mode === "pomodoro").length + 1;
+      const nextMode = (pomCount % 4 === 0) ? "long_break" : "short_break";
+      console.debug("[Pomodoro] Pomodoro complete. Total poms today (incl. this):", pomCount, "Switching to:", nextMode);
+      handleSwitchMode(nextMode);
     } else {
+      console.debug("[Pomodoro] Break session ended. Switching back to pomodoro mode.");
       handleSwitchMode("pomodoro");
     }
   }
