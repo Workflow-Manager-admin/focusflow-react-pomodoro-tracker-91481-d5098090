@@ -3,6 +3,7 @@ import "./App.css";
 import { AuthProvider, useAuth } from "./AuthContext";
 import TasksPane from "./TasksPane";
 import { useSessions } from "./supabaseExamples";
+import ReportDashboard from "./ReportDashboard";
 
 /**
  * Simple generic modal
@@ -64,6 +65,11 @@ function PomodoroApp() {
     { key: "short_break", label: "Short Break" },
     { key: "long_break", label: "Long Break" },
   ];
+
+  // PAGE NAVIGATION
+  // page: "timer" | "report"
+  const [page, setPage] = useState("timer");
+
   const DEFAULT_DURATIONS = { pomodoro: 25, short_break: 5, long_break: 15 };
   const [mode, setMode] = useState("pomodoro");
   const [durations, setDurations] = useState(DEFAULT_DURATIONS);
@@ -330,13 +336,22 @@ function PomodoroApp() {
       <header className="main-navbar">
         <span className="logo">Pomofocus</span>
         <div className="icon-btn-group">
-          <button
-            className="icon-btn"
-            aria-label="Reports"
-            onClick={() => showComingSoonModal("Reports")}
-          >
-            <span role="img" aria-label="bar-chart">📊</span> Report
-          </button>
+          {user && (
+            <button
+              className={`icon-btn${page === "report" ? " tab-pill active" : ""}`}
+              aria-label="Reports"
+              onClick={() => setPage(page === "report" ? "timer" : "report")}
+              style={page === "report"
+                ? {
+                  backgroundColor: "#FFD67C", color: "#c85f5f", fontWeight: 700
+                }
+                : {}
+              }
+            >
+              <span role="img" aria-label="bar-chart">📊</span>{" "}
+              {page === "report" ? "Back" : "Report"}
+            </button>
+          )}
           <button
             className="icon-btn"
             aria-label="Settings"
@@ -371,98 +386,108 @@ function PomodoroApp() {
         </div>
       </header>
       <main className="main-content">
-        <section className="timer-card">
-          {/* Tabs */}
-          <div className="mode-tabs">
-            {MODES.map((m) => (
-              <button
-                key={m.key}
-                className={`tab-pill${mode === m.key ? " active" : ""}`}
-                onClick={() => switchMode(m.key)}
-                aria-label={m.label}
-                tabIndex="0"
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-          {/* Timer */}
-          <div className="timer-display">{formatTime(timeLeft)}</div>
-          {/* Start/pause Button */}
-          {!timerActive ? (
-            <button className="start-btn" onClick={handleStart}>
-              {timeLeft < durations[mode] * 60 && timeLeft > 0 ? "RESUME" : "START"}
-            </button>
-          ) : (
-            <button className="start-btn" style={{ backgroundColor: "#fff8f7", color: "#c85f5f" }} onClick={handlePause}>
-              PAUSE
-            </button>
-          )}
-          <div className="session-label">
-            {mode === "pomodoro"
-              ? `#${sessionNum} Time to focus!`
-              : mode === "short_break"
-                ? "Short Break"
-                : "Long Break"}
-          </div>
-
-          {/* New: Pomodoro Session History */}
-          {user && (
-            <div style={{ marginTop: "34px", width: "100%" }}>
-              <div style={{fontWeight: 600, color: "#fff", textAlign: "left", marginBottom: "6px"}}>Recent Pomodoro Sessions</div>
-              {sessionsLoading ? (
-                <div style={{color: "#ffd"}}>Loading history…</div>
-              ) : sessionsError ? (
-                <div style={{color: "#ffc9c9", fontSize: 14}}>Failed to load: {sessionsError.message}</div>
-              ) : (sessions && sessions.length > 0 ? (
-                <ul className="history-list">
-                  {sessions
-                    .filter((s) => s.mode === "pomodoro")
-                    .slice(0, 7)
-                    .map((s, idx) => {
-                      const start = new Date(s.started_at);
-                      const end = new Date(s.ended_at);
-                      const mins = Math.round(((end - start) || (s.duration*60000)) / 60000);
-                      return (
-                        <li key={s.id} className="history-pomodoro">
-                          <span style={{fontWeight:700, color:"#d95550"}}>#{sessions.length - idx}</span>
-                          <span>
-                            {start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}{" "}
-                            <span style={{ color: "#9d7f7f", fontSize: 13 }}>
-                              {start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </span>
-                          <span style={{ color: "#753D20" }}>
-                            {mins} min
-                          </span>
-                        </li>
-                      );
-                    })}
-                </ul>
+        {/* PAGE SWITCHING: Report Dashboard vs. Timer/tasks */}
+        {page === "report" ? (
+          <ReportDashboard />
+        ) : (
+          <>
+            <section className="timer-card">
+              {/* Tabs */}
+              <div className="mode-tabs">
+                {MODES.map((m) => (
+                  <button
+                    key={m.key}
+                    className={`tab-pill${mode === m.key ? " active" : ""}`}
+                    onClick={() => switchMode(m.key)}
+                    aria-label={m.label}
+                    tabIndex="0"
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              {/* Timer */}
+              <div className="timer-display">{formatTime(timeLeft)}</div>
+              {/* Start/pause Button */}
+              {!timerActive ? (
+                <button className="start-btn" onClick={handleStart}>
+                  {timeLeft < durations[mode] * 60 && timeLeft > 0 ? "RESUME" : "START"}
+                </button>
               ) : (
-                <div className="empty-history">No Pomodoro sessions yet!</div>
-              ))}
-            </div>
-          )}
+                <button className="start-btn" style={{ backgroundColor: "#fff8f7", color: "#c85f5f" }} onClick={handlePause}>
+                  PAUSE
+                </button>
+              )}
+              <div className="session-label">
+                {mode === "pomodoro"
+                  ? `#${sessionNum} Time to focus!`
+                  : mode === "short_break"
+                    ? "Short Break"
+                    : "Long Break"}
+              </div>
 
-        </section>
-        {/* Tasks Section: Live CRUD from Supabase */}
-        <TasksPane />
+              {/* New: Pomodoro Session History */}
+              {user && (
+                <div style={{ marginTop: "34px", width: "100%" }}>
+                  <div style={{fontWeight: 600, color: "#fff", textAlign: "left", marginBottom: "6px"}}>Recent Pomodoro Sessions</div>
+                  {sessionsLoading ? (
+                    <div style={{color: "#ffd"}}>Loading history…</div>
+                  ) : sessionsError ? (
+                    <div style={{color: "#ffc9c9", fontSize: 14}}>Failed to load: {sessionsError.message}</div>
+                  ) : (sessions && sessions.length > 0 ? (
+                    <ul className="history-list">
+                      {sessions
+                        .filter((s) => s.mode === "pomodoro")
+                        .slice(0, 7)
+                        .map((s, idx) => {
+                          const start = new Date(s.started_at);
+                          const end = new Date(s.ended_at);
+                          const mins = Math.round(((end - start) || (s.duration*60000)) / 60000);
+                          return (
+                            <li key={s.id} className="history-pomodoro">
+                              <span style={{fontWeight:700, color:"#d95550"}}>#{sessions.length - idx}</span>
+                              <span>
+                                {start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}{" "}
+                                <span style={{ color: "#9d7f7f", fontSize: 13 }}>
+                                  {start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </span>
+                              <span style={{ color: "#753D20" }}>
+                                {mins} min
+                              </span>
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  ) : (
+                    <div className="empty-history">No Pomodoro sessions yet!</div>
+                  ))}
+                </div>
+              )}
+            </section>
+            {/* Tasks Section: Live CRUD from Supabase */}
+            <TasksPane />
+          </>
+        )}
       </main>
-      {/* Floating Action Buttons */}
-      <a
-        className="fab fab-left"
-        aria-label="Visit site"
-        href="https://pomofocus.io"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ transition: "background 0.15s, outline 0.15s", display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}
-      >
-        <span role="img" aria-label="external">↗️</span> Visit site
-      </a>
-      <button className="fab fab-right" aria-label="Reset timer" onClick={handleReset}>
-        <span role="img" aria-label="refresh">↻</span>
-      </button>
+      {/* Floating Action Buttons (shown only if not dashboard/report page) */}
+      {page !== "report" && (
+        <>
+          <a
+            className="fab fab-left"
+            aria-label="Visit site"
+            href="https://pomofocus.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ transition: "background 0.15s, outline 0.15s", display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}
+          >
+            <span role="img" aria-label="external">↗️</span> Visit site
+          </a>
+          <button className="fab fab-right" aria-label="Reset timer" onClick={handleReset}>
+            <span role="img" aria-label="refresh">↻</span>
+          </button>
+        </>
+      )}
     </div>
   );
 }
