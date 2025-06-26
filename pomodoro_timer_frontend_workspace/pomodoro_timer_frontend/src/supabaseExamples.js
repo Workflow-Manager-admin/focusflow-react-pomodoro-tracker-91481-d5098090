@@ -1,0 +1,300 @@
+//
+// Supabase Example Hooks and Utilities for Tasks & Sessions
+// Copy/paste ready! Designed for use in App.js or any component.
+// Each hook takes care of loading, creating, updating, and deleting with comments for developer clarity.
+//
+// Prerequisite: Ensure your tables exist as follows (column names are examples and should match your schema):
+// - tasks: id (uuid), user_id (uuid), title (text), completed (boolean), created_at (timestamp)
+// - sessions: id (uuid), user_id (uuid), task_id (uuid), mode (text), duration (int), started_at (timestamp), ended_at (timestamp)
+//
+
+import { useState, useEffect, useCallback } from "react";
+import supabase from "./supabaseClient";
+
+/*
+ * ========================
+ *      TASKS HOOKS
+ * ========================
+ */
+
+// PUBLIC_INTERFACE
+/**
+ * useTasks - React hook for CRUD operations on the "tasks" table.
+ * @param {string} userId - Current user's ID (Supabase Auth user.id)
+ * @returns {object} { tasks, loading, error, addTask, toggleTask, deleteTask, refreshTasks }
+ *
+ * Example usage:
+ *   const { tasks, addTask, toggleTask, deleteTask, loading } = useTasks(user.id);
+ */
+export function useTasks(userId) {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch all tasks for a user
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) setError(error);
+    setTasks(data || []);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) fetchTasks();
+  }, [userId, fetchTasks]);
+
+  // Add a new task
+  // Example: addTask("Write Code")
+  // Returns the inserted task or null if failed
+  async function addTask(title) {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert([{ title, completed: false, user_id: userId }])
+      .select()
+      .single();
+
+    if (!error) {
+      setTasks((old) => [data, ...old]);
+    } else {
+      setError(error);
+    }
+    setLoading(false);
+    return data;
+  }
+
+  // Toggle completion for a specific task
+  async function toggleTask(id, completed) {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ completed: !completed })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (!error) {
+      setTasks((old) =>
+        old.map((t) => (t.id === id ? { ...t, completed: !completed } : t))
+      );
+    } else {
+      setError(error);
+    }
+    setLoading(false);
+    return data;
+  }
+
+  // Delete a task by id
+  async function deleteTask(id) {
+    setLoading(true);
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    if (!error) {
+      setTasks((old) => old.filter((t) => t.id !== id));
+    } else {
+      setError(error);
+    }
+    setLoading(false);
+  }
+
+  // Force reload tasks from DB
+  async function refreshTasks() {
+    await fetchTasks();
+  }
+
+  return {
+    tasks,
+    loading,
+    error,
+    addTask,
+    toggleTask,
+    deleteTask,
+    refreshTasks,
+  };
+}
+
+/*
+ * ========================
+ *      SESSIONS HOOKS
+ * ========================
+ */
+
+// PUBLIC_INTERFACE
+/**
+ * useSessions - React hook for CRUD operations and logging Pomodoro sessions
+ * @param {string} userId - Current user's ID (Supabase Auth user.id)
+ * @param {object} [opts] - Optional filters (e.g., {taskId})
+ *
+ * @returns {object} { sessions, loading, error, logSession, refreshSessions }
+ *
+ * Example usage:
+ *   const { sessions, logSession, loading } = useSessions(user.id, {taskId: selectedTaskId});
+ */
+export function useSessions(userId, opts = {}) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch sessions (optionally for just one task)
+  const fetchSessions = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    let query = supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (opts.taskId) {
+      query = query.eq("task_id", opts.taskId);
+    }
+    const { data, error } = await query.order("started_at", {
+      ascending: false,
+    });
+    if (error) setError(error);
+    setSessions(data || []);
+    setLoading(false);
+  }, [userId, opts.taskId]);
+
+  useEffect(() => {
+    if (userId) fetchSessions();
+  }, [userId, opts.taskId, fetchSessions]);
+
+  // Log a new session (a Pomodoro or break)
+  // Example: logSession({task_id, mode: 'pomodoro', duration: 25, started_at, ended_at})
+  // Returns the inserted session or null if failed
+  async function logSession(session) {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("sessions")
+      .insert([{ ...session, user_id: userId }])
+      .select()
+      .single();
+
+    if (!error) {
+      setSessions((old) => [data, ...old]);
+    } else {
+      setError(error);
+    }
+    setLoading(false);
+    return data;
+  }
+
+  // Force reload of sessions list from DB
+  async function refreshSessions() {
+    await fetchSessions();
+  }
+
+  return {
+    sessions,
+    loading,
+    error,
+    logSession,
+    refreshSessions,
+  };
+}
+
+/*
+ * ========================
+ *    ONE-OFF UTILITIES
+ * ========================
+ *
+ * If you just want one-shot static helpers instead of hooks, use these:
+ */
+
+// PUBLIC_INTERFACE
+// Fetch all tasks for a user
+export async function fetchAllTasks(userId) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// PUBLIC_INTERFACE
+// Add a new task (returns the single created row)
+export async function createTask(userId, title) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert([{ user_id: userId, title, completed: false }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// PUBLIC_INTERFACE
+// Toggle completion of a given task (by id, passing new completed state)
+export async function setTaskCompleted(taskId, completed) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ completed })
+    .eq("id", taskId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// PUBLIC_INTERFACE
+// Delete a task (by id)
+export async function deleteTaskById(taskId) {
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+  if (error) throw error;
+  return true;
+}
+
+// PUBLIC_INTERFACE
+// Log (insert) a session
+export async function insertSession(session) {
+  // Required: session = { user_id, task_id, mode, duration, started_at, ended_at }
+  const { data, error } = await supabase
+    .from("sessions")
+    .insert([session])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// PUBLIC_INTERFACE
+// Fetch sessions for a user, or specific task (optional)
+export async function fetchSessions(userId, taskId) {
+  let query = supabase.from("sessions").select("*").eq("user_id", userId);
+  if (taskId) query = query.eq("task_id", taskId);
+  const { data, error } = await query.order("started_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/* USAGE EXAMPLES:
+
+// In a component (after user is signed in):
+
+import { useTasks, useSessions } from './supabaseExamples';
+
+const { tasks, addTask, toggleTask, deleteTask, loading } = useTasks(user.id);
+
+const { sessions, logSession } = useSessions(user.id, {taskId: myTaskId});
+
+addTask("My new task");
+toggleTask("task-uuid", false);
+deleteTask("task-uuid");
+logSession({
+  task_id: "task-uuid",
+  mode: "pomodoro",
+  duration: 25,
+  started_at: new Date().toISOString(),
+  ended_at: new Date(Date.now() + 25*60000).toISOString()
+});
+
+*/
+
