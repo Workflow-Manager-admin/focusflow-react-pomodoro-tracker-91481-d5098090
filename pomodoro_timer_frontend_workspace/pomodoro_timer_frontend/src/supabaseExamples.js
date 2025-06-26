@@ -4,7 +4,9 @@
 // Each hook takes care of loading, creating, updating, and deleting with comments for developer clarity.
 //
 // Prerequisite: Ensure your tables exist as follows (column names are examples and should match your schema):
-// - tasks: id (uuid), user_id (uuid), title (text), completed (boolean), created_at (timestamp)
+/* Schema expectation:
+   - tasks: id (uuid), user_id (uuid), title (text), done (boolean), created_at (timestamp)
+*/
 // - sessions: id (uuid), user_id (uuid), task_id (uuid), mode (text), duration (int), started_at (timestamp), ended_at (timestamp)
 //
 
@@ -56,7 +58,7 @@ export function useTasks(userId) {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .insert([{ title, completed: false, user_id: userId }])
+      .insert([{ title, done: false, user_id: userId }])
       .select()
       .single();
 
@@ -69,19 +71,19 @@ export function useTasks(userId) {
     return data;
   }
 
-  // Toggle completion for a specific task
-  async function toggleTask(id, completed) {
+  // Toggle done/undone for a specific task
+  async function toggleTask(id, done) {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .update({ completed: !completed })
+      .update({ done: !done })
       .eq("id", id)
       .select()
       .single();
 
     if (!error) {
       setTasks((old) =>
-        old.map((t) => (t.id === id ? { ...t, completed: !completed } : t))
+        old.map((t) => (t.id === id ? { ...t, done: !done } : t))
       );
     } else {
       setError(error);
@@ -224,7 +226,7 @@ export async function fetchAllTasks(userId) {
 export async function createTask(userId, title) {
   const { data, error } = await supabase
     .from("tasks")
-    .insert([{ user_id: userId, title, completed: false }])
+    .insert([{ user_id: userId, title, done: false }])
     .select()
     .single();
   if (error) throw error;
@@ -232,11 +234,11 @@ export async function createTask(userId, title) {
 }
 
 // PUBLIC_INTERFACE
-// Toggle completion of a given task (by id, passing new completed state)
-export async function setTaskCompleted(taskId, completed) {
+// Toggle done state of a given task (by id, passing new done state)
+export async function setTaskCompleted(taskId, done) {
   const { data, error } = await supabase
     .from("tasks")
-    .update({ completed })
+    .update({ done })
     .eq("id", taskId)
     .select()
     .single();

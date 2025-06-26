@@ -38,8 +38,8 @@ function TasksPane() {
   }
 
   // Toggle complete/incomplete for a task
-  async function handleToggleTask(id, completed) {
-    await toggleTask(id, completed);
+  async function handleToggleTask(id, done) {
+    await toggleTask(id, done);
   }
 
   // Show the add task input
@@ -162,17 +162,17 @@ function TasksPane() {
                 display: "flex",
                 alignItems: "center",
                 gap: 11,
-                opacity: task.completed ? 0.59 : 1,
-                textDecoration: task.completed ? "line-through" : "none",
+                opacity: task.done ? 0.59 : 1,
+                textDecoration: task.done ? "line-through" : "none",
                 transition: "opacity .23s",
                 cursor: "pointer",
               }}
               tabIndex={0}
-              aria-label={task.completed ? "Mark as undone" : "Mark as done"}
-              onClick={() => handleToggleTask(task.id, task.completed)}
+              aria-label={task.done ? "Mark as undone" : "Mark as done"}
+              onClick={() => handleToggleTask(task.id, task.done)}
               onKeyDown={e => {
                 if (e.key === " " || e.key === "Enter") {
-                  handleToggleTask(task.id, task.completed);
+                  handleToggleTask(task.id, task.done);
                 }
               }}
             >
@@ -182,7 +182,7 @@ function TasksPane() {
                   height: 18,
                   borderRadius: "50%",
                   border: "2px solid #f9d8d8",
-                  background: task.completed ? "#E87A41" : "#fff",
+                  background: task.done ? "#E87A41" : "#fff",
                   marginRight: 5,
                   marginLeft: 1,
                   display: "inline-flex",
@@ -190,13 +190,13 @@ function TasksPane() {
                   justifyContent: "center",
                   transition: "background .18s",
                   fontSize: 13,
-                  color: task.completed ? "#fff" : "#c85f5f",
+                  color: task.done ? "#fff" : "#c85f5f",
                   cursor: "pointer",
                   flexShrink: 0
                 }}
-                aria-checked={task.completed}
+                aria-checked={task.done}
               >
-                {task.completed ? "✓" : ""}
+                {task.done ? "✓" : ""}
               </span>
               <span style={{ flex: 1, fontWeight: 500, fontSize: 16, userSelect: "text" }}>
                 {task.title}
