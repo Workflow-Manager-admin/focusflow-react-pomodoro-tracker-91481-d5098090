@@ -55,7 +55,8 @@ export function useTasks(userId) {
   // Example: addTask("Write Code")
   // Returns the inserted task or null if failed
   async function addTask(title) {
-    if (!userId) {
+    // Enforce userId is present and valid
+    if (!userId || typeof userId !== "string" || userId.trim() === "") {
       const error = new Error("No authenticated user. Cannot add task.");
       setError(error);
       setLoading(false);
@@ -68,31 +69,37 @@ export function useTasks(userId) {
       .select()
       .single();
 
-    if (!error) {
+    if (!error && data && data.user_id === userId) {
       setTasks((old) => [data, ...old]);
     } else {
-      setError(error);
+      setError(error || new Error("Failed to set user_id on inserted task"));
     }
     setLoading(false);
     return data;
   }
 
-  // Toggle done/undone for a specific task
+  // Toggle done/undone for a specific task, require userId for security
   async function toggleTask(id, done) {
+    if (!userId || typeof userId !== "string" || userId.trim() === "") {
+      setError(new Error("No authenticated user. Cannot toggle task."));
+      setLoading(false);
+      return null;
+    }
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
       .update({ done: !done })
       .eq("id", id)
+      .eq("user_id", userId)
       .select()
       .single();
 
-    if (!error) {
+    if (!error && data && data.user_id === userId) {
       setTasks((old) =>
         old.map((t) => (t.id === id ? { ...t, done: !done } : t))
       );
     } else {
-      setError(error);
+      setError(error || new Error("Failed to toggle: user_id mismatch."));
     }
     setLoading(false);
     return data;
@@ -227,28 +234,46 @@ export async function fetchAllTasks(userId) {
   return data;
 }
 
-// PUBLIC_INTERFACE
-// Add a new task (returns the single created row)
+/**
+ * PUBLIC_INTERFACE
+ * Add a new task (returns the single created row).
+ * Ensures userId is valid and is from Supabase Auth session!
+ */
 export async function createTask(userId, title) {
+  // Require a userId, do not allow anonymous creation!
+  if (!userId || typeof userId !== "string" || userId.trim() === "") {
+    throw new Error("No authenticated user. Cannot create task.");
+  }
   const { data, error } = await supabase
     .from("tasks")
     .insert([{ user_id: userId, title, done: false }])
     .select()
     .single();
   if (error) throw error;
+  // Double-check user_id in returned row
+  if (!data || data.user_id !== userId) {
+    throw new Error("Task insert did not assign the correct authenticated user's ID.");
+  }
   return data;
 }
 
 // PUBLIC_INTERFACE
 // Toggle done state of a given task (by id, passing new done state)
-export async function setTaskCompleted(taskId, done) {
+// This function now requires both taskId and userId for security.
+export async function setTaskCompleted(taskId, done, userId) {
+  if (!userId || typeof userId !== "string" || userId.trim() === "") {
+    throw new Error("No authenticated user. Cannot set task completed.");
+  }
   const { data, error } = await supabase
     .from("tasks")
     .update({ done })
     .eq("id", taskId)
+    .eq("user_id", userId)
     .select()
     .single();
   if (error) throw error;
+  if (!data || data.user_id !== userId)
+    throw new Error("Tried to update a task not owned by the logged in user.");
   return data;
 }
 
