@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+import { AuthProvider, useAuth } from "./AuthContext";
 
-// Simple Modal Component
-function Modal({ open, onClose, title, children }) {
+/**
+ * Simple generic modal
+ */
+function Modal({ open, onClose, title, children, actions }) {
   if (!open) return null;
   return (
     <div className="modal-bg" onClick={onClose}>
@@ -10,18 +13,36 @@ function Modal({ open, onClose, title, children }) {
         <h2>{title}</h2>
         <div>{children}</div>
         <div className="modal-actions">
-          <button className="primary-btn" onClick={onClose} autoFocus>
-            OK
-          </button>
+          {actions && actions.length > 0
+            ? actions.map((a, i) => (
+                <button
+                  key={i}
+                  className={a.className || "primary-btn"}
+                  onClick={a.onClick}
+                  type={a.type || "button"}
+                  autoFocus={a.autoFocus || false}
+                  style={a.style}
+                >
+                  {a.label}
+                </button>
+              ))
+            : (
+                <button className="primary-btn" onClick={onClose} autoFocus>
+                  OK
+                </button>
+              )}
         </div>
       </div>
     </div>
   );
 }
 
-// PUBLIC_INTERFACE
-function App() {
-  // Pomodoro state machine, timers, and durations (same logic as before)
+/**
+ * PUBLIC_INTERFACE
+ * Pomodoro App with Supabase Auth integration.
+ */
+function PomodoroApp() {
+  // Pomodoro state
   const MODES = [
     { key: "pomodoro", label: "Pomodoro" },
     { key: "short_break", label: "Short Break" },
@@ -34,8 +55,16 @@ function App() {
   const [timerActive, setTimerActive] = useState(false);
   const [sessionNum, setSessionNum] = useState(1);
   const [modalInfo, setModalInfo] = useState({ open: false, title: "", message: "" });
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState("sign-in"); // or "sign-up"
   const timerRef = useRef(null);
 
+  // Auth
+  const { user, signIn, signUp, signOut, loading: authLoading, error: authError } = useAuth();
+  const [authForm, setAuthForm] = useState({ email: "", password: "" });
+  const [authLocalError, setAuthLocalError] = useState("");
+
+  // Pomodoro logic
   useEffect(() => {
     if (!timerActive) return;
     timerRef.current = setInterval(() => {
@@ -50,6 +79,7 @@ function App() {
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
+    // eslint-disable-next-line
   }, [timerActive]);
 
   useEffect(() => { setTimeLeft(durations[mode] * 60); }, [mode, durations]);
@@ -72,14 +102,14 @@ function App() {
     return `${m}:${s}`;
   }
 
-  // ---- Demo static tasks ----
+  // "Demo" tasks
   const TASKS = [
     { text: "Finish UI Overhaul" },
     { text: "Write summary report" },
     { text: "Review PRs" },
   ];
 
-  // Modal open helpers
+  // Modal helpers
   function showComingSoonModal(feature) {
     setModalInfo({
       open: true,
@@ -88,8 +118,111 @@ function App() {
     });
   }
 
-  // "Visit site" action
-  // Removed direct JS navigation in favor of external anchor tag for reliability.
+  // ---- AUTH UI ----
+  // Open sign-in or sign-up modal
+  function openAuth(mode = "sign-in") {
+    setAuthMode(mode);
+    setAuthForm({ email: "", password: "" });
+    setAuthLocalError("");
+    setShowAuthModal(true);
+  }
+
+  // Handle sign-in/up form submit
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    setAuthLocalError("");
+    if (!authForm.email || !authForm.password) {
+      setAuthLocalError("Enter email and password.");
+      return;
+    }
+    if (authMode === "sign-in") {
+      const { error } = await signIn(authForm.email, authForm.password);
+      if (!error) setShowAuthModal(false);
+    } else if (authMode === "sign-up") {
+      const { error } = await signUp(authForm.email, authForm.password);
+      if (!error) setShowAuthModal(false);
+    }
+  }
+
+  // UI for Sign-In/Sign-Up modal
+  function AuthModal() {
+    return (
+      <Modal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title={authMode === "sign-in" ? "Sign In" : "Sign Up"}
+        actions={[
+          {
+            label: authMode === "sign-in" ? "Sign In" : "Sign Up",
+            onClick: handleAuthSubmit,
+            type: "submit",
+            className: "primary-btn",
+            autoFocus: true
+          },
+          {
+            label: "Cancel",
+            onClick: () => setShowAuthModal(false),
+            className: "secondary-btn"
+          }
+        ]}
+      >
+        <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={authForm.email}
+            onChange={e => setAuthForm(f => ({ ...f, email: e.target.value }))}
+            autoComplete="username"
+            required
+            style={{ fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 }}
+            disabled={authLoading}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={authForm.password}
+            onChange={e => setAuthForm(f => ({ ...f, password: e.target.value }))}
+            autoComplete={authMode === "sign-in" ? "current-password" : "new-password"}
+            required
+            style={{ fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 }}
+            disabled={authLoading}
+          />
+          {(authLocalError || authError) && (
+            <div style={{ color: "#d95550", fontWeight: 500, marginBottom: 2 }}>
+              {authLocalError || authError?.message}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 7 }}>
+            {authMode === "sign-in" ? (
+              <span style={{ color: "#999", fontSize: 14 }}>
+                Don't have an account?{" "}
+                <button
+                  type="button"
+                  style={{ background: "none", border: "none", color: "#d95550", cursor: "pointer" }}
+                  onClick={() => setAuthMode("sign-up")}
+                  disabled={authLoading}
+                >
+                  Sign Up
+                </button>
+              </span>
+            ) : (
+              <span style={{ color: "#999", fontSize: 14 }}>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  style={{ background: "none", border: "none", color: "#d95550", cursor: "pointer" }}
+                  onClick={() => setAuthMode("sign-in")}
+                  disabled={authLoading}
+                >
+                  Sign In
+                </button>
+              </span>
+            )}
+          </div>
+        </form>
+      </Modal>
+    );
+  }
 
   return (
     <div className="app-root">
@@ -101,6 +234,7 @@ function App() {
       >
         <div>{modalInfo.message}</div>
       </Modal>
+      <AuthModal />
 
       {/* Header */}
       <header className="main-navbar">
@@ -120,13 +254,30 @@ function App() {
           >
             <span role="img" aria-label="gear">⚙️</span> Setting
           </button>
-          <button
-            className="icon-btn"
-            aria-label="Sign In"
-            onClick={() => showComingSoonModal("Sign In")}
-          >
-            <span role="img" aria-label="person">👤</span> Sign In
-          </button>
+          {/* Auth buttons */}
+          {user ? (
+            <>
+              <span style={{ color: "#eee", fontWeight: 500, padding: "0 6px" }}>
+                {user.email}
+              </span>
+              <button
+                className="icon-btn"
+                aria-label="Sign Out"
+                onClick={signOut}
+                disabled={authLoading}
+              >
+                <span role="img" aria-label="person">👤</span> Sign Out
+              </button>
+            </>
+          ) : (
+            <button
+              className="icon-btn"
+              aria-label="Sign In"
+              onClick={() => openAuth("sign-in")}
+            >
+              <span role="img" aria-label="person">👤</span> Sign In
+            </button>
+          )}
         </div>
       </header>
       <main className="main-content">
@@ -195,7 +346,7 @@ function App() {
       <a
         className="fab fab-left"
         aria-label="Visit site"
-        href="https://pomofocus.io" 
+        href="https://pomofocus.io"
         target="_blank"
         rel="noopener noreferrer"
         style={{ transition: "background 0.15s, outline 0.15s", display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}
@@ -206,6 +357,17 @@ function App() {
         <span role="img" aria-label="refresh">↻</span>
       </button>
     </div>
+  );
+}
+
+/**
+ * Root App wraps with AuthProvider to make auth state available globally.
+ */
+function App() {
+  return (
+    <AuthProvider>
+      <PomodoroApp />
+    </AuthProvider>
   );
 }
 
