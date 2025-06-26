@@ -108,10 +108,14 @@ function App() {
           prev === durations[mode] * 60 ||
           prev <= 0
         ) {
+          console.debug("[Pomodoro] useEffect: mode/durations changed; updating timeLeft to", expected, "mode=", mode);
           return expected;
         }
+        console.debug("[Pomodoro] useEffect: mode/durations changed; timer paused mid-session, keep current timeLeft=", prev, "mode=", mode);
         return prev; // do not override paused value
       });
+    } else {
+      console.debug("[Pomodoro] useEffect: mode/durations changed during ACTIVE timer. No timeLeft mutation. mode=", mode);
     }
     // Do not change timeLeft during pause so paused sessions can be resumed at same point
   }, [mode, durations]); // removed timerActive from deps so pause/resume never causes reset
@@ -155,20 +159,20 @@ function App() {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
-      // Uncomment for debugging: console.log("Timer started");
+      console.debug("[Pomodoro] Timer interval started!");
     }
     if (!timerActive && intervalRef.current !== null) {
       // Clear interval if timer is not active
       clearInterval(intervalRef.current);
       intervalRef.current = null;
-      // Uncomment for debugging: console.log("Timer paused/stopped, interval cleared");
+      console.debug("[Pomodoro] Timer interval cleared (paused or stopped)");
     }
     return () => {
       // On unmount or dependency change, always clear interval for safety
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-        // Uncomment for debugging: console.log("Interval cleaned up on effect clean up");
+        console.debug("[Pomodoro] Timer interval cleaned up in effect cleanup");
       }
     };
   }, [timerActive]);
@@ -183,16 +187,22 @@ function App() {
 
   // PUBLIC_INTERFACE
   function handleStart() {
+    console.debug("[Pomodoro] Start pressed. Prev timerActive=", timerActive, "timeLeft=", timeLeft);
     setTimerActive(true);
+    // No change to timeLeft; Resume from current value if called after Pause
   }
   // PUBLIC_INTERFACE
   function handlePause() {
+    console.debug("[Pomodoro] Pause pressed. timerActive=", timerActive, "timeLeft (should freeze)=", timeLeft);
     setTimerActive(false);
+    // Do NOT change timeLeft; timer interval effect will clear but value is retained
   }
   // PUBLIC_INTERFACE
   function handleReset() {
+    console.debug("[Pomodoro] Reset pressed. For mode=", mode, "Will set timeLeft to", durations[mode] * 60);
     setTimerActive(false);
     setTimeLeft(durations[mode] * 60);
+    // timeLeft reset to default duration
   }
 
   // PUBLIC_INTERFACE
@@ -203,10 +213,12 @@ function App() {
     // Only switch mode immediately if timer is NOT running.
     // If paused (not running), and the mode is switched, preserve timeLeft (useEffect will NOT reset unless timeLeft is already at a "fresh" duration value).
     if (!timerActive) {
+      console.debug("[Pomodoro] Mode switch (paused/stopped):", mode, "→", newMode, "current timeLeft=", timeLeft);
       setMode(newMode);
       // setTimeLeft will only occur in useEffect if at a natural reset point
     } else {
       // If timer is running, require user to pause before switching modes, for integrity
+      console.debug("[Pomodoro] Attempted mode switch while running. Pausing first. Current mode:", mode, "Attempt to:", newMode, "timeLeft=", timeLeft);
       setTimerActive(false);
       // User can now switch mode (maintaining timeLeft of the "old" mode).
     }
