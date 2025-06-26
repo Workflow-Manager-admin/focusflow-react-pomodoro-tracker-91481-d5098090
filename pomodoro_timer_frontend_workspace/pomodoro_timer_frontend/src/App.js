@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { AuthProvider, useAuth } from "./AuthContext";
 import TasksPane from "./TasksPane";
+import { useSessions } from "./supabaseExamples";
 
 /**
  * Simple generic modal
@@ -60,10 +61,16 @@ function PomodoroApp() {
   const [authMode, setAuthMode] = useState("sign-in"); // or "sign-up"
   const timerRef = useRef(null);
 
+  // Track timer session start
+  const [timerStartedAt, setTimerStartedAt] = useState(null);
+
   // Auth
   const { user, signIn, signUp, signOut, loading: authLoading, error: authError } = useAuth();
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [authLocalError, setAuthLocalError] = useState("");
+
+  // Supabase: Logging and fetching sessions history for current user
+  const { sessions, loading: sessionsLoading, error: sessionsError, logSession, refreshSessions } = useSessions(user?.id || null);
 
   // Pomodoro logic
   useEffect(() => {
@@ -83,18 +90,57 @@ function PomodoroApp() {
     // eslint-disable-next-line
   }, [timerActive]);
 
+  // Helper: When timer starts, capture the "started_at" timestamp
+  useEffect(() => {
+    if (timerActive && timerStartedAt === null) {
+      setTimerStartedAt(new Date());
+    }
+    if (!timerActive && timeLeft === durations[mode] * 60) {
+      setTimerStartedAt(null);
+    }
+    // eslint-disable-next-line
+  }, [timerActive, mode, durations, timeLeft]);
+
   useEffect(() => { setTimeLeft(durations[mode] * 60); }, [mode, durations]);
 
-  function handleStart() { if (timeLeft <= 0) setTimeLeft(durations[mode] * 60); setTimerActive(true); }
+  function handleStart() {
+    if (timeLeft <= 0) setTimeLeft(durations[mode] * 60);
+    setTimerActive(true);
+    if (!timerStartedAt) setTimerStartedAt(new Date());
+  }
   function handlePause() { setTimerActive(false); }
-  function handleReset() { setTimerActive(false); setTimeLeft(durations[mode] * 60); }
-  function handleSessionEnd() {
+  function handleReset() {
+    setTimerActive(false);
+    setTimeLeft(durations[mode] * 60);
+    setTimerStartedAt(null);
+  }
+
+  // Log work session completion (only if logged in and it's a pomodoro)
+  async function handleSessionEnd() {
+    let endingTime = new Date();
+    if (mode === "pomodoro" && user) {
+      // Insert session row
+      try {
+        await logSession({
+          // Optionally, you can tie it to a task by adding a UI for task selection
+          mode: "pomodoro",
+          duration: durations["pomodoro"],    // in minutes
+          started_at: timerStartedAt ? timerStartedAt.toISOString() : null,
+          ended_at: endingTime.toISOString()
+        });
+      } catch (err) {
+        // Show a modal error if needed (optional)
+        setModalInfo({ open: true, title: "Session Logging Error", message: "Failed to log session: " + err.message });
+      }
+      refreshSessions && refreshSessions();
+    }
     if (mode === "pomodoro") setSessionNum((n) => n + 1);
     setMode(
       mode === "pomodoro"
         ? ((sessionNum + 1) % 4 === 0 ? "long_break" : "short_break")
         : "pomodoro"
     );
+    setTimerStartedAt(null);
   }
   function switchMode(newMode) { setMode(newMode); setTimerActive(false); }
   function formatTime(sec) {
@@ -316,6 +362,46 @@ function PomodoroApp() {
                 ? "Short Break"
                 : "Long Break"}
           </div>
+
+          {/* New: Pomodoro Session History */}
+          {user && (
+            <div style={{ marginTop: "34px", width: "100%" }}>
+              <div style={{fontWeight: 600, color: "#fff", textAlign: "left", marginBottom: "6px"}}>Recent Pomodoro Sessions</div>
+              {sessionsLoading ? (
+                <div style={{color: "#ffd"}}>Loading history…</div>
+              ) : sessionsError ? (
+                <div style={{color: "#ffc9c9", fontSize: 14}}>Failed to load: {sessionsError.message}</div>
+              ) : (sessions && sessions.length > 0 ? (
+                <ul className="history-list">
+                  {sessions
+                    .filter((s) => s.mode === "pomodoro")
+                    .slice(0, 7) // Show only most recent 7 pomodoros
+                    .map((s, idx) => {
+                      const start = new Date(s.started_at);
+                      const end = new Date(s.ended_at);
+                      const mins = Math.round(((end - start) || (s.duration*60000)) / 60000);
+                      return (
+                        <li key={s.id} className="history-pomodoro">
+                          <span style={{fontWeight:700, color:"#d95550"}}>#{sessions.length - idx}</span>
+                          <span>
+                            {start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}{" "}
+                            <span style={{ color: "#9d7f7f", fontSize: 13 }}>
+                              {start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </span>
+                          <span style={{ color: "#753D20" }}>
+                            {mins} min
+                          </span>
+                        </li>
+                      );
+                    })}
+                </ul>
+              ) : (
+                <div className="empty-history">No Pomodoro sessions yet!</div>
+              ))}
+            </div>
+          )}
+
         </section>
         {/* Tasks Section: Live CRUD from Supabase */}
         <TasksPane />
