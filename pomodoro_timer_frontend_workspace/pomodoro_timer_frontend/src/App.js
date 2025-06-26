@@ -6,14 +6,17 @@ import { useSessions } from "./supabaseExamples";
 
 /**
  * Simple generic modal
+ * Always mounted, no conditional rendering, toggled via prop/class only.
  */
 function Modal({ open, onClose, title, children, actions }) {
-  // Only render when modal should be open
-  if (!open) return null;
-  // Add a special class to parent to control animation (it only runs on mount)
   return (
     <div
-      className="modal-bg modal-bg--active"
+      className={`modal-bg${open ? " modal-bg--active" : ""}`}
+      style={{
+        display: open ? "flex" : "none",
+        alignItems: "center",
+        justifyContent: "center"
+      }}
       onClick={(e) => {
         // Only trigger close if user clicked directly on the backdrop, not any descendant (like input)
         if (e.target === e.currentTarget && typeof onClose === 'function') onClose();
@@ -27,9 +30,9 @@ function Modal({ open, onClose, title, children, actions }) {
         <div>{children}</div>
         <div className="modal-actions">
           {actions && actions.length > 0
-            ? actions.map((a, i) => (
+            ? actions.map((a) => (
                 <button
-                  key={i}
+                  key={a.label + (a.type || "")}
                   className={a.className || "primary-btn"}
                   onClick={typeof a.onClick === "function" ? a.onClick : undefined}
                   type={a.type || "button"}
@@ -160,13 +163,6 @@ function PomodoroApp() {
     return `${m}:${s}`;
   }
 
-  // "Demo" tasks
-  const TASKS = [
-    { text: "Finish UI Overhaul" },
-    { text: "Write summary report" },
-    { text: "Review PRs" },
-  ];
-
   // Modal helpers
   function showComingSoonModal(feature) {
     setModalInfo({
@@ -177,7 +173,6 @@ function PomodoroApp() {
   }
 
   // ---- AUTH UI ----
-  // Open sign-in or sign-up modal (function reference is stable)
   const openAuth = React.useCallback((mode = "sign-in") => {
     setAuthMode(mode);
     setAuthForm({ email: "", password: "" });
@@ -185,7 +180,6 @@ function PomodoroApp() {
     setShowAuthModal(true);
   }, []);
 
-  // Handle sign-in/up form submit (function reference is stable)
   const handleAuthSubmit = React.useCallback(async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setAuthLocalError("");
@@ -200,10 +194,9 @@ function PomodoroApp() {
       const { error } = await signUp(authForm.email, authForm.password);
       if (!error) setShowAuthModal(false);
     }
-  // Only depends on authForm, authMode, signIn, signUp, setShowAuthModal
   }, [authForm, authMode, signIn, signUp, setShowAuthModal]);
 
-  // Stable actions for AuthModal to prevent remount/shuffle—identity never changes except for mode
+  // Stable actions for AuthModal
   const authModalActions = React.useMemo(() => ([
     {
       label: authMode === "sign-in" ? "Sign In" : "Sign Up",
@@ -219,10 +212,10 @@ function PomodoroApp() {
     }
   ]), [authMode, handleAuthSubmit]);
 
-  // AuthModal: Remove any key prop, avoid inline arrays/objects, and avoid conditional remount
-  const authModalRef = useRef(null); // for focus
+  // Always render AuthModal in tree (never conditional). Handlers and all styles hoisted for stable identity.
+  const authModalRef = useRef(null); // focus target
 
-  // Hoist styles out of component to stable references: prevents inline object identity recreation on each render
+  // Hoisted styles for control
   const AUTH_FORM_STYLE = { display: "flex", flexDirection: "column", gap: 16 };
   const AUTH_INPUT_STYLE = { fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 };
   const AUTH_FLEX_ROW_STYLE = { display: "flex", gap: 12, alignItems: "center", marginTop: 7 };
@@ -230,19 +223,23 @@ function PomodoroApp() {
   const AUTH_ERR_STYLE = { color: "#d95550", fontWeight: 500, marginBottom: 2 };
   const AUTH_LABEL_STYLE = { color: "#999", fontSize: 14 };
 
-  // The link button handler functions (identities are stable with useCallback)
-  const signUpSwitch = React.useCallback(() => setAuthMode("sign-up"), [setAuthMode]);
-  const signInSwitch = React.useCallback(() => setAuthMode("sign-in"), [setAuthMode]);
+  const signUpSwitch = React.useCallback(() => setAuthMode("sign-up"), []);
+  const signInSwitch = React.useCallback(() => setAuthMode("sign-in"), []);
+  const handleEmailChange = React.useCallback(e => {
+    const val = e.target.value;
+    setAuthForm(f => ({ ...f, email: val }));
+  }, []);
+  const handlePasswordChange = React.useCallback(e => {
+    const val = e.target.value;
+    setAuthForm(f => ({ ...f, password: val }));
+  }, []);
 
-  // AuthModal component: use memoization to prevent excessive rerenders, and do not create new styles or arrays in render
-  const AuthModal = React.useCallback(function AuthModalInner() {
-    // Focus only on first render/show
+  function AuthModal() {
     useEffect(() => {
       if (showAuthModal && authModalRef.current) {
         authModalRef.current.focus();
       }
     }, [showAuthModal]);
-
     return (
       <Modal
         open={showAuthModal}
@@ -260,7 +257,7 @@ function PomodoroApp() {
             type="email"
             placeholder="Email"
             value={authForm.email}
-            onChange={e => setAuthForm(f => ({ ...f, email: e.target.value }))}
+            onChange={handleEmailChange}
             autoComplete="username"
             required
             style={AUTH_INPUT_STYLE}
@@ -271,7 +268,7 @@ function PomodoroApp() {
             type="password"
             placeholder="Password"
             value={authForm.password}
-            onChange={e => setAuthForm(f => ({ ...f, password: e.target.value }))}
+            onChange={handlePasswordChange}
             autoComplete={authMode === "sign-in" ? "current-password" : "new-password"}
             required
             style={AUTH_INPUT_STYLE}
@@ -315,24 +312,11 @@ function PomodoroApp() {
         </form>
       </Modal>
     );
-  }, [
-    showAuthModal,
-    setShowAuthModal,
-    authMode,
-    authModalActions,
-    handleAuthSubmit,
-    authForm.email,
-    authForm.password,
-    authLoading,
-    authLocalError,
-    authError,
-    signUpSwitch,
-    signInSwitch
-  ]);
+  }
 
   return (
     <div className="app-root">
-      {/* Modals */}
+      {/* Always mounted modals */}
       <Modal
         open={modalInfo.open}
         onClose={() => setModalInfo({ ...modalInfo, open: false })}
@@ -434,7 +418,7 @@ function PomodoroApp() {
                 <ul className="history-list">
                   {sessions
                     .filter((s) => s.mode === "pomodoro")
-                    .slice(0, 7) // Show only most recent 7 pomodoros
+                    .slice(0, 7)
                     .map((s, idx) => {
                       const start = new Date(s.started_at);
                       const end = new Date(s.ended_at);
