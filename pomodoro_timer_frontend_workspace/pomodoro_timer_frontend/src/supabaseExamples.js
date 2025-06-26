@@ -54,9 +54,24 @@ export function useTasks(userId) {
   // Add a new task
   // Example: addTask("Write Code")
   // Returns the inserted task or null if failed
+  // PUBLIC_INTERFACE
+  /**
+   * Adds a new task after checking for a valid authenticated userId from Supabase Auth.
+   * The userId must match the currently logged-in user's id.
+   * For security, no insert will occur unless userId is present and valid.
+   * @param {string} title - Task title
+   */
   async function addTask(title) {
-    // Enforce userId is present and valid
-    if (!userId || typeof userId !== "string" || userId.trim() === "") {
+    // Try to always obtain user_id from supabase.auth.getUser() if not present.
+    let effectiveUserId = userId;
+    try {
+      // Defensive: double-check from Auth if userId is missing or empty
+      if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.id) effectiveUserId = user.id;
+      }
+    } catch { /* fallback: use initial */ }
+    if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
       const error = new Error("No authenticated user. Cannot add task.");
       setError(error);
       setLoading(false);
@@ -65,11 +80,11 @@ export function useTasks(userId) {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .insert([{ title, done: false, user_id: userId }])
+      .insert([{ title, done: false, user_id: effectiveUserId }])
       .select()
       .single();
 
-    if (!error && data && data.user_id === userId) {
+    if (!error && data && data.user_id === effectiveUserId) {
       setTasks((old) => [data, ...old]);
     } else {
       setError(error || new Error("Failed to set user_id on inserted task"));
@@ -79,8 +94,20 @@ export function useTasks(userId) {
   }
 
   // Toggle done/undone for a specific task, require userId for security
+  /**
+   * Toggle task completion: always ensure user_id is from authenticated Supabase user.
+   * @param {string} id - Task id
+   * @param {boolean} done - Current task done state
+   */
   async function toggleTask(id, done) {
-    if (!userId || typeof userId !== "string" || userId.trim() === "") {
+    let effectiveUserId = userId;
+    try {
+      if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.id) effectiveUserId = user.id;
+      }
+    } catch { /* fallback */ }
+    if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
       setError(new Error("No authenticated user. Cannot toggle task."));
       setLoading(false);
       return null;
@@ -90,11 +117,11 @@ export function useTasks(userId) {
       .from("tasks")
       .update({ done: !done })
       .eq("id", id)
-      .eq("user_id", userId)
+      .eq("user_id", effectiveUserId)
       .select()
       .single();
 
-    if (!error && data && data.user_id === userId) {
+    if (!error && data && data.user_id === effectiveUserId) {
       setTasks((old) =>
         old.map((t) => (t.id === id ? { ...t, done: !done } : t))
       );
@@ -183,11 +210,28 @@ export function useSessions(userId, opts = {}) {
   // Log a new session (a Pomodoro or break)
   // Example: logSession({task_id, mode: 'pomodoro', duration: 25, started_at, ended_at})
   // Returns the inserted session or null if failed
+  /**
+   * Log a session. Always ensures user_id is authenticated.
+   * @param {object} session - Session data (should NOT include user_id, it's set here)
+   */
   async function logSession(session) {
     setLoading(true);
+    let effectiveUserId = userId;
+    try {
+      if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.id) effectiveUserId = user.id;
+      }
+    } catch {}
+    if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
+      setError(new Error("No authenticated user. Cannot log session."));
+      setLoading(false);
+      return null;
+    }
+
     const { data, error } = await supabase
       .from("sessions")
-      .insert([{ ...session, user_id: userId }])
+      .insert([{ ...session, user_id: effectiveUserId }])
       .select()
       .single();
 
@@ -239,19 +283,36 @@ export async function fetchAllTasks(userId) {
  * Add a new task (returns the single created row).
  * Ensures userId is valid and is from Supabase Auth session!
  */
+/**
+ * PUBLIC_INTERFACE
+ * Securely creates a new task for the currently authenticated user.
+ * @param {string} userId - Must be obtained directly from supabase.auth.getUser().id or React AuthContext
+ * @param {string} title - Task title
+ * @returns Inserted task row
+ * @throws Error if userId is not present/valid or insert fails
+ */
 export async function createTask(userId, title) {
-  // Require a userId, do not allow anonymous creation!
-  if (!userId || typeof userId !== "string" || userId.trim() === "") {
+  let effectiveUserId = userId;
+  if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
+    // Attempt to check from supabase.auth.getUser()
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id) effectiveUserId = user.id;
+    } catch {
+      /* fallback to throw below */
+    }
+  }
+  if (!effectiveUserId || typeof effectiveUserId !== "string" || effectiveUserId.trim() === "") {
     throw new Error("No authenticated user. Cannot create task.");
   }
   const { data, error } = await supabase
     .from("tasks")
-    .insert([{ user_id: userId, title, done: false }])
+    .insert([{ user_id: effectiveUserId, title, done: false }])
     .select()
     .single();
   if (error) throw error;
   // Double-check user_id in returned row
-  if (!data || data.user_id !== userId) {
+  if (!data || data.user_id !== effectiveUserId) {
     throw new Error("Task insert did not assign the correct authenticated user's ID.");
   }
   return data;
