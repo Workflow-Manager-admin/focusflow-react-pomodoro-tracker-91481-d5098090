@@ -15,6 +15,8 @@ function TasksPane() {
     error: tasksError,
     addTask,
     toggleTask,
+    deleteTask,
+    refreshTasks,
   } = useTasks(user ? user.id : null);
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
