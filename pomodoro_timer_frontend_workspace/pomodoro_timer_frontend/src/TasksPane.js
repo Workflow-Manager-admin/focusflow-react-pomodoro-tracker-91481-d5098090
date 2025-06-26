@@ -32,6 +32,10 @@ function TasksPane() {
       setLocalError("Task too short");
       return;
     }
+    if (!user) {
+      setLocalError("You must be signed in to add tasks.");
+      return;
+    }
     await addTask(title);
     setNewTaskTitle("");
     setShowInput(false);

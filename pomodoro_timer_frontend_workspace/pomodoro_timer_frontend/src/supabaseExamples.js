@@ -55,6 +55,12 @@ export function useTasks(userId) {
   // Example: addTask("Write Code")
   // Returns the inserted task or null if failed
   async function addTask(title) {
+    if (!userId) {
+      const error = new Error("No authenticated user. Cannot add task.");
+      setError(error);
+      setLoading(false);
+      return null;
+    }
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
