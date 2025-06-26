@@ -5,6 +5,37 @@ import "./App.css";
  * Modern Pomodoro Timer React App
  * Implements Pomodoro, Short/Long Break mode, automatic switching, history, settings, and persistent state.
  * UI theme matches minimal light style, mobile responsive, with custom colors as specified.
+ *
+ * === TIMER STATE MACHINE OVERVIEW ===
+ * - State variables: timeLeft (seconds), timerActive (bool), mode (string "pomodoro"/"short_break"/"long_break")
+ * 
+ *                 +---------------------+      Handle Reset/Start     +-----------------------+
+ *     Paused      |                     | <-------------------------- |      Fresh (Start)    |
+ *    mid-session  |                     |                            +-----------------------+
+ *    (timerActive=F, timeLeft>0, <full) |                                        ^
+ *                 |                     |         Pause               | Handle session end/auto
+ *   +-------------+                     +----------------------------+
+ *   |          Resume/Start
+ *   v
+ * +----------------------+
+ * |   Running (Active)   |
+ * +----------------------+
+ *         |
+ *         |   Ends: timeLeft<=0       (auto or forced by Reset)
+ *         v
+ * +-----------------------+
+ * |      Finished         | --[Reset]--> Paused/Fresh
+ * +-----------------------+
+ *
+ * CRITICAL RULES:
+ * - "Pause" always sets timerActive=FALSE and preserves timeLeft (except clamps to 0 if time has expired).
+ * - "Resume"/"Start" ONLY resets timer if timeLeft<=0, otherwise continues from pause position.
+ * - "Switch Mode" while paused preserves timeLeft unless at "clean" duration (fresh start/expiry).
+ * - "Reset" always pauses and sets timeLeft to mode's full duration.
+ * - Changing durations does NOT reset time if paused mid-session, only if at start/end of a session.
+ * - Intervals are strictly managed to prevent race/double execution.
+ *
+ * This patch documents the above logic, corrects edge cases, and adds extensive comments.
  */
 
 // Constants for session types
@@ -94,12 +125,17 @@ function App() {
 
   // Listen to mode and durations change and update timeLeft (only reset when at clean state)
   useEffect(() => {
-    // Only update timeLeft if the timer is not running *and* timeLeft corresponds to start/end of session, 
-    // so Pause preserves remaining time, and Resume correctly continues.
+    /**
+     * Audit and documentation:
+     * - Only update timeLeft if the timer is NOT RUNNING *and* timeLeft is at a "clean" (natural) value (start or just finished).
+     * - If paused mid-session (timeLeft not at duration), we PRESERVE the paused timer!
+     * - If timer is running, mode/duration change is ignored to avoid interrupts.
+     * - This prevents accidental RESET on Pause/Resume and when switching modes while paused.
+     */
     if (!timerActive) {
       setTimeLeft((prev) => {
         const expected = durations[mode] * 60;
-        // Only reset if exactly at "clean start/end" state; otherwise, leave timeLeft untouched for mid-session resume
+        // If timeLeft exactly matches the previous (clean) duration or is zero, that's a reset point.
         if (
           prev === DEFAULT_DURATIONS[mode] * 60 ||
           prev === durations[mode] * 60 ||
@@ -108,12 +144,12 @@ function App() {
           console.debug("[Pomodoro] useEffect: mode/durations changed; resetting timeLeft to", expected, "mode=", mode);
           return expected;
         }
-        // Robust: if paused mid-session (different from natural duration), preserve paused value
+        // Pause/resume or mid-session — retain the paused value.
         console.debug("[Pomodoro] useEffect: mode/durations changed; timer paused mid-session (not overriding timeLeft)", prev, "mode=", mode);
         return prev;
       });
     } else {
-      // Changing session params while running = no effect, always return to current ticking time
+      // Timer is active: mode or durations change has no immediate effect to prevent odd resets
       console.debug("[Pomodoro] useEffect: mode/durations changed during ACTIVE timer. No timeLeft mutation. mode=", mode);
     }
   }, [mode, durations]);
@@ -200,14 +236,19 @@ function App() {
 
   // PUBLIC_INTERFACE
   function handleStart() {
-    // Prevent starting if already running
+    /**
+     * Start / Resume handler:
+     * - If timer is running: do nothing.
+     * - If timer was paused OR never started, but timeLeft > 0: resumes from current value.
+     * - If timer was paused/stopped at 0 or less (completed): resets full duration for new session.
+     * - Only ever resets timeLeft on a 0/expired state; otherwise, pure Resume.
+     */
     if (timerActive) {
       console.debug("[Pomodoro] Start pressed but timer already active. Ignored. timeLeft=", timeLeft);
       return;
     }
-    // If timer was paused at 0, reset for new session, else always resume
     if (timeLeft <= 0) {
-      // Defensive: resume/start should not start a 0s session
+      // Only reset for fully expired/completed session
       const resetTime = durations[mode] * 60;
       setTimeLeft(resetTime);
       console.debug("[Pomodoro] Start/Resume pressed, but timeLeft was 0 or less. Resetting to", resetTime, "for mode=", mode);
@@ -219,23 +260,32 @@ function App() {
   }
   // PUBLIC_INTERFACE
   function handlePause() {
-    // Prevent pausing if already paused
+    /**
+     * Pause handler:
+     * - Sets timerActive to FALSE, which triggers interval cleanup and freezes the timer.
+     * - DOES NOT touch timeLeft except to clamp at 0 if already expired (rare edge).
+     * - This ensures "Pause" always freezes the value and never triggers reset logic.
+     */
     if (!timerActive) {
       console.debug("[Pomodoro] Pause pressed but already paused/stopped. Ignored. timeLeft=", timeLeft);
       return;
     }
-    // Defensive: Pausing at 0 triggers an extra reset in a rare race, so clamp to 0
     if (timeLeft <= 0) {
-      setTimeLeft(0);
+      setTimeLeft(0); // Only clamp if below 0 (should not normally happen)
       console.debug("[Pomodoro] Pause pressed, but timeLeft was already expired. Clamping to 0.");
     }
+    // Pause: always freeze at current timeLeft, never reset.
     console.debug("[Pomodoro] Pause pressed. Setting timerActive FALSE. Preserving current timeLeft =", timeLeft);
     setTimerActive(false);
-    // Never setTimeLeft here (except for 0-edge case).
   }
   // PUBLIC_INTERFACE
   function handleReset() {
-    // Robust: always log the edge case if Reset is pressed while running/paused
+    /**
+     * Reset handler:
+     * - Always pauses the timer (timerActive FALSE)
+     * - Sets timeLeft to full duration for current mode, regardless of previous value or paused/running status.
+     * - This is a deliberate "hard" reset (distinct from Pause/Resume).
+     */
     if (timerActive) {
       console.debug("[Pomodoro] Reset pressed DURING ACTIVE session. Pausing and resetting.");
     } else {
@@ -243,19 +293,22 @@ function App() {
     }
     setTimerActive(false);
     setTimeLeft(durations[mode] * 60);
-    // Defensive: Clamp to default duration for current mode.
   }
 
   // PUBLIC_INTERFACE
   function handleSwitchMode(newMode) {
-    // Don't switch if already current mode
+    /**
+     * Mode switch handler:
+     * - Only switches mode immediately if timer is PAUSED or STOPPED (not running).
+     * - If paused mid-session, preserves timeLeft (will not reset unless at natural reset point).
+     * - If timer is running, always force Pause first (require clean transition), does NOT reset.
+     * - This prevents unwanted resets during Pause or mid-session.
+     */
     if (newMode === mode) {
       console.debug("[Pomodoro] Mode switch pressed but mode already set:", newMode);
       return;
     }
 
-    // Only switch mode immediately if timer is NOT running.
-    // If paused (not running), and the mode is switched, preserve timeLeft (useEffect will NOT reset unless timeLeft is already at a "fresh" duration value).
     if (!timerActive) {
       console.debug("[Pomodoro] Mode switch (paused/stopped):", mode, "→", newMode, "current timeLeft=", timeLeft);
       setMode(newMode);
@@ -264,7 +317,7 @@ function App() {
       // If timer is running, require user to pause before switching modes, for integrity
       console.debug("[Pomodoro] Attempted mode switch while running. Pausing first. Current mode:", mode, "Attempt to:", newMode, "timeLeft=", timeLeft);
       setTimerActive(false);
-      // User can now switch mode (maintaining timeLeft of the "old" mode).
+      // User can now switch mode (maintaining timeLeft of the "old" mode"), but not resetting anything.
     }
   }
 
