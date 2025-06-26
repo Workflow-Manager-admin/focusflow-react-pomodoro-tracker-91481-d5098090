@@ -92,12 +92,26 @@ function App() {
     // eslint-disable-next-line
   }, []);
 
-  // Listen to mode or durations change and update timeLeft accordingly when not running
+  // Listen to mode and durations change and update timeLeft
   useEffect(() => {
-    // Only reset timeLeft if the mode itself changes when the timer is *not* running
-    // (so switching tabs in middle of running timer does not force reset, and Pause keeps the current timeLeft)
+    // Only update timeLeft if the mode changes while the timer is not running,
+    // or if durations for the current mode change while the timer is not running.
+    // If timer is paused, keep the value so pause/resume works correctly.
     if (!timerActive) {
-      setTimeLeft(durations[mode] * 60);
+      setTimeLeft((prev) => {
+        // Only reset if timeLeft matches previous mode duration (i.e. not "mid-session", only e.g. after session completes or tab switches)
+        const expected = durations[mode] * 60;
+        // If current time left matches previous duration values (i.e., session just reset/switch), reset; else preserve pause value
+        if (
+          prev === DEFAULT_DURATIONS[mode] * 60 ||
+          prev === durations[mode] * 60 ||
+          prev <= 0 // after finishing session
+        ) {
+          return expected;
+        }
+        // Otherwise, don't override paused value
+        return prev;
+      });
     }
     // If the timer is paused, we do NOT touch timeLeft to allow exact pause/resume
   }, [mode, durations, timerActive]);
@@ -177,11 +191,19 @@ function App() {
 
   // PUBLIC_INTERFACE
   function handleSwitchMode(newMode) {
-    // If the mode is the same as current mode, do nothing
+    // Don't switch if already current mode
     if (newMode === mode) return;
-    setTimerActive(false);
-    setMode(newMode);
-    setTimeLeft(durations[newMode] * 60);
+    // Only reset timer/timeLeft if timer is NOT currently running.
+    if (!timerActive) {
+      setMode(newMode);
+      // setTimeLeft occurs in useEffect above to support natural "pause-and-continue" behavior.
+    } else {
+      // If timer is running, require user to pause before switching modes (for data integrity / accidental loss)
+      // Optionally, you could show a warning/toast here.
+      setTimerActive(false);
+      // Do not switch mode immediately; user must resume/pause first. Uncomment below to switch anyway:
+      // setMode(newMode);
+    }
   }
 
   // PUBLIC_INTERFACE
@@ -287,7 +309,7 @@ function App() {
                 className="main-btn start"
                 style={{ background: "var(--primary-color)" }}
                 onClick={handleStart}
-              >{timeLeft < durations[mode]*60 ? "Resume" : "Start"}</button>
+              >{timeLeft < durations[mode]*60 && timeLeft > 0 ? "Resume" : "Start"}</button>
             ) : (
               <button
                 className="main-btn pause"
