@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { AuthProvider, useAuth } from "./AuthContext";
+import TasksPane from "./TasksPane";
 
 /**
  * Simple generic modal
@@ -316,31 +317,8 @@ function PomodoroApp() {
                 : "Long Break"}
           </div>
         </section>
-        {/* Tasks Section */}
-        <section className="tasks-section">
-          <div className="tasks-header">
-            <span>Tasks</span>
-            <button className="icon-btn" aria-label="task menu">
-              <span role="img" aria-label="menu">≡</span>
-            </button>
-          </div>
-          <div className="tasks-divider" />
-          <button
-            className="add-task-btn"
-            aria-label="Add Task"
-            onClick={() => showComingSoonModal("Add Task")}
-          >
-            <span style={{ fontSize: 20, fontWeight: 700 }}>+</span> Add Task
-          </button>
-          {/* Tasks List: For demo, static */}
-          {TASKS.map((task, i) => (
-            <div key={i} className="task-item" style={{
-              color: "var(--primary-text)", padding: "12px 0", borderBottom: i !== TASKS.length - 1 ? "1px dashed #fff4" : "none"
-            }}>
-              {task.text}
-            </div>
-          ))}
-        </section>
+        {/* Tasks Section: Live CRUD from Supabase */}
+        <TasksPane />
       </main>
       {/* Floating Action Buttons */}
       <a
