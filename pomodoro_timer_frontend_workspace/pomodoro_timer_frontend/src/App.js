@@ -177,17 +177,17 @@ function PomodoroApp() {
   }
 
   // ---- AUTH UI ----
-  // Open sign-in or sign-up modal
-  function openAuth(mode = "sign-in") {
+  // Open sign-in or sign-up modal (function reference is stable)
+  const openAuth = React.useCallback((mode = "sign-in") => {
     setAuthMode(mode);
     setAuthForm({ email: "", password: "" });
     setAuthLocalError("");
     setShowAuthModal(true);
-  }
+  }, []);
 
-  // Handle sign-in/up form submit
-  async function handleAuthSubmit(e) {
-    e.preventDefault();
+  // Handle sign-in/up form submit (function reference is stable)
+  const handleAuthSubmit = React.useCallback(async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     setAuthLocalError("");
     if (!authForm.email || !authForm.password) {
       setAuthLocalError("Enter email and password.");
@@ -200,17 +200,11 @@ function PomodoroApp() {
       const { error } = await signUp(authForm.email, authForm.password);
       if (!error) setShowAuthModal(false);
     }
-  }
+  // Only depends on authForm, authMode, signIn, signUp, setShowAuthModal
+  }, [authForm, authMode, signIn, signUp, setShowAuthModal]);
 
-  // UI for Sign-In/Sign-Up modal
-  // Ensure modal is not re-mounted or re-animated on every keystroke
-  const authModalRef = useRef(null); // only for focusing
-
-  // --- Bugfix: Refactored AuthModal to avoid shuffle/jump effect when typing in the modal.
-  // Save actions object outside render for modal, so the identity is stable and not created anew each render.
-  // Remove `key="auth-modal"` from <Modal>. Key on a component with persistent state can force remounts.
-  // Use React.useMemo to ensure the actions array stays identical between renders (unless dependencies change).
-  const authModalActions = React.useMemo(() => [
+  // Stable actions for AuthModal to prevent remount/shuffle—identity never changes except for mode
+  const authModalActions = React.useMemo(() => ([
     {
       label: authMode === "sign-in" ? "Sign In" : "Sign Up",
       onClick: handleAuthSubmit,
@@ -223,16 +217,24 @@ function PomodoroApp() {
       onClick: () => setShowAuthModal(false),
       className: "secondary-btn"
     }
-  ], [authMode, handleAuthSubmit, setShowAuthModal]);
+  ]), [authMode, handleAuthSubmit]);
+
+  // AuthModal: Remove any key prop, avoid inline arrays/objects, and avoid conditional remount
+  const authModalRef = useRef(null); // for focus
 
   function AuthModal() {
-    // Setup effect only to focus when modal is shown
+    // Focus only on first render/show
     useEffect(() => {
       if (showAuthModal && authModalRef.current) {
         authModalRef.current.focus();
       }
     }, [showAuthModal]);
-    // Use persistent actions to prevent changing the identity of the actions array
+    // Styles for use in JSX, declared at component scope, not with useMemo in conditionals
+    const formStyle = { display: "flex", flexDirection: "column", gap: 16 };
+    const inputStyle = { fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 };
+    const flexRowStyle = { display: "flex", gap: 12, alignItems: "center", marginTop: 7 };
+    const linkButtonStyle = { background: "none", border: "none", color: "#d95550", cursor: "pointer" };
+
     return (
       <Modal
         open={showAuthModal}
@@ -242,7 +244,7 @@ function PomodoroApp() {
       >
         <form
           onSubmit={handleAuthSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: 16 }}
+          style={formStyle}
           autoComplete="on"
         >
           <input
@@ -253,7 +255,7 @@ function PomodoroApp() {
             onChange={e => setAuthForm(f => ({ ...f, email: e.target.value }))}
             autoComplete="username"
             required
-            style={{ fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 }}
+            style={inputStyle}
             disabled={authLoading}
             tabIndex={1}
           />
@@ -264,7 +266,7 @@ function PomodoroApp() {
             onChange={e => setAuthForm(f => ({ ...f, password: e.target.value }))}
             autoComplete={authMode === "sign-in" ? "current-password" : "new-password"}
             required
-            style={{ fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 }}
+            style={inputStyle}
             disabled={authLoading}
             tabIndex={2}
           />
@@ -273,13 +275,13 @@ function PomodoroApp() {
               {authLocalError || authError?.message}
             </div>
           )}
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 7 }}>
+          <div style={flexRowStyle}>
             {authMode === "sign-in" ? (
               <span style={{ color: "#999", fontSize: 14 }}>
                 Don't have an account?{" "}
                 <button
                   type="button"
-                  style={{ background: "none", border: "none", color: "#d95550", cursor: "pointer" }}
+                  style={linkButtonStyle}
                   onClick={() => setAuthMode("sign-up")}
                   disabled={authLoading}
                   tabIndex={3}
@@ -292,7 +294,7 @@ function PomodoroApp() {
                 Already have an account?{" "}
                 <button
                   type="button"
-                  style={{ background: "none", border: "none", color: "#d95550", cursor: "pointer" }}
+                  style={linkButtonStyle}
                   onClick={() => setAuthMode("sign-in")}
                   disabled={authLoading}
                   tabIndex={3}
