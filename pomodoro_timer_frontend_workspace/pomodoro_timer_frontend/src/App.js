@@ -4,26 +4,25 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import TasksPane from "./TasksPane";
 import { useSessions } from "./supabaseExamples";
 import ReportDashboard from "./ReportDashboard";
-import { AUTH_MODAL_CONSTANT_STYLES } from "./AuthModal.constants";
 import Modal from "./Modal";
 import { AuthModal } from "./AuthModal";
+import { AUTH_MODAL_CONSTANT_STYLES } from "./AuthModal.constants";
 
 /**
  * PUBLIC_INTERFACE
- * Pomodoro App with Supabase Auth integration.
+ * PomodoroApp - Main App Layout and UI matching extracted design.
+ * Matches layout, navigation bar, timer, tabs, and task field according to assets/pomodoro_main_design_notes.md.
  */
 function PomodoroApp() {
-  // Pomodoro state
+  // Modes as in the design
   const MODES = [
     { key: "pomodoro", label: "Pomodoro" },
     { key: "short_break", label: "Short Break" },
-    { key: "long_break", label: "Long Break" },
+    { key: "long_break", label: "Long Break" }
   ];
+  const [page, setPage] = useState("timer"); // timer | report
 
-  // PAGE NAVIGATION
-  // page: "timer" | "report"
-  const [page, setPage] = useState("timer");
-
+  // Timer state
   const DEFAULT_DURATIONS = { pomodoro: 25, short_break: 5, long_break: 15 };
   const [mode, setMode] = useState("pomodoro");
   const [durations, setDurations] = useState(DEFAULT_DURATIONS);
@@ -32,10 +31,10 @@ function PomodoroApp() {
   const [sessionNum, setSessionNum] = useState(1);
   const [modalInfo, setModalInfo] = useState({ open: false, title: "", message: "" });
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState("sign-in"); // or "sign-up"
+  const [authMode, setAuthMode] = useState("sign-in");
   const timerRef = useRef(null);
 
-  // Track timer session start
+  // Track timer session start/stop
   const [timerStartedAt, setTimerStartedAt] = useState(null);
 
   // Auth
@@ -43,10 +42,10 @@ function PomodoroApp() {
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [authLocalError, setAuthLocalError] = useState("");
 
-  // Supabase: Logging and fetching sessions history for current user
+  // Sessions (analytics/history)
   const { sessions, loading: sessionsLoading, error: sessionsError, logSession, refreshSessions } = useSessions(user?.id || null);
 
-  // Pomodoro logic
+  // --- Timer logic
   useEffect(() => {
     if (!timerActive) return;
     timerRef.current = setInterval(() => {
@@ -64,7 +63,6 @@ function PomodoroApp() {
     // eslint-disable-next-line
   }, [timerActive]);
 
-  // Helper: When timer starts, capture the "started_at" timestamp
   useEffect(() => {
     if (timerActive && timerStartedAt === null) {
       setTimerStartedAt(new Date());
@@ -72,7 +70,6 @@ function PomodoroApp() {
     if (!timerActive && timeLeft === durations[mode] * 60) {
       setTimerStartedAt(null);
     }
-    // eslint-disable-next-line
   }, [timerActive, mode, durations, timeLeft]);
 
   useEffect(() => { setTimeLeft(durations[mode] * 60); }, [mode, durations]);
@@ -89,21 +86,18 @@ function PomodoroApp() {
     setTimerStartedAt(null);
   }
 
-  // Log work session completion (only if logged in and it's a pomodoro)
+  // Handle automatic session switch (auto break/long break logic per Pomodoro)
   async function handleSessionEnd() {
     let endingTime = new Date();
     if (mode === "pomodoro" && user) {
-      // Insert session row
       try {
         await logSession({
-          // Optionally, you can tie it to a task by adding a UI for task selection
           mode: "pomodoro",
-          duration: durations["pomodoro"],    // in minutes
+          duration: durations["pomodoro"],
           started_at: timerStartedAt ? timerStartedAt.toISOString() : null,
           ended_at: endingTime.toISOString()
         });
       } catch (err) {
-        // Show a modal error if needed (optional)
         setModalInfo({ open: true, title: "Session Logging Error", message: "Failed to log session: " + err.message });
       }
       refreshSessions && refreshSessions();
@@ -117,6 +111,7 @@ function PomodoroApp() {
     setTimerStartedAt(null);
   }
   function switchMode(newMode) { setMode(newMode); setTimerActive(false); }
+
   function formatTime(sec) {
     const m = String(Math.floor(Math.abs(sec) / 60)).padStart(2, "0");
     const s = String(Math.abs(sec) % 60).padStart(2, "0");
@@ -172,10 +167,7 @@ function PomodoroApp() {
     }
   ]), [authMode, handleAuthSubmit]);
 
-  // Always render AuthModal in tree (never conditional). All handler/style refs hoisted for stable identity.
-  const authModalRef = useRef(null); // focus target
-
-  // --- Hoisted stable styles/objects for Auth modal fields/buttons (Object.freeze outside component for referential equality) ---
+  // Stable styles/objects for Auth modal fields/buttons (see constants file)
   const AUTH_FORM_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_FORM_STYLE;
   const AUTH_INPUT_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_INPUT_STYLE;
   const AUTH_FLEX_ROW_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_FLEX_ROW_STYLE;
@@ -183,7 +175,6 @@ function PomodoroApp() {
   const AUTH_ERR_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_ERR_STYLE;
   const AUTH_LABEL_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_LABEL_STYLE;
 
-  // --- Stable handlers/refs ---
   const signUpSwitch = React.useCallback(() => setAuthMode("sign-up"), [setAuthMode]);
   const signInSwitch = React.useCallback(() => setAuthMode("sign-in"), [setAuthMode]);
   const handleEmailChange = React.useCallback(
@@ -201,7 +192,7 @@ function PomodoroApp() {
     [setAuthForm]
   );
 
-  // Floating action button styles (unconditional for React Hooks)
+  // Floating action button styles (Theme-matching)
   const FAB_LEFT_LINK_STYLE = React.useMemo(
     () => ({
       transition: "background 0.15s, outline 0.15s",
@@ -209,13 +200,12 @@ function PomodoroApp() {
       alignItems: "center",
       textDecoration: "none",
       color: "inherit"
-    }),
-    []
-  );
+    }), []);
 
+  // Render main UI matching the extracted design
   return (
-    <div className="app-root">
-      {/* Always mounted modals */}
+    <div className="app-root" data-testid="pomofocus-main">
+      {/* Modal dialogs (generic and auth) */}
       <Modal
         open={modalInfo.open}
         onClose={() => setModalInfo({ ...modalInfo, open: false })}
@@ -241,108 +231,115 @@ function PomodoroApp() {
         onSubmit={handleAuthSubmit}
       />
 
-      {/* Header */}
-      <header className="main-navbar">
-        <span className="logo">Pomofocus</span>
-        <div className="icon-btn-group">
-          {user && (
-            <button
-              className={`icon-btn${page === "report" ? " tab-pill active" : ""}`}
-              aria-label="Reports"
-              onClick={() => setPage(page === "report" ? "timer" : "report")}
-              style={page === "report"
-                ? {
-                  backgroundColor: "#FFD67C", color: "#c85f5f", fontWeight: 700
-                }
-                : {}
-              }
-            >
-              <span role="img" aria-label="bar-chart">📊</span>{" "}
-              {page === "report" ? "Back" : "Report"}
-            </button>
-          )}
+      {/* NAVIGATION - extracted design */}
+      <nav className="design-navbar">
+        <div className="navbar-left">
+          <span className="logo design-logo">🍅 Pomofocus</span>
+        </div>
+        <div className="navbar-right">
           <button
-            className="icon-btn"
+            className={`nav-btn${page === "report" ? " nav-btn-active" : ""}`}
+            aria-label="Reports"
+            onClick={() => setPage(page === "report" ? "timer" : "report")}
+            style={page === "report"
+              ? { background: "var(--motif-orange)", color: "#fff", fontWeight: 700 }
+              : {}}
+          >
+            <span role="img" aria-label="bar-chart">📊</span>
+            {page === "report" ? " Main" : " Report"}
+          </button>
+          <button
+            className="nav-btn"
             aria-label="Settings"
             onClick={() => showComingSoonModal("Settings")}
+            style={{ marginLeft: 8 }}
           >
-            <span role="img" aria-label="gear">⚙️</span> Setting
+            <span role="img" aria-label="gear">⚙️</span>
           </button>
-          {/* Auth buttons */}
+          {/* Auth */}
           {user ? (
             <>
-              <span style={{ color: "#eee", fontWeight: 500, padding: "0 6px" }}>
-                {user.email}
-              </span>
+              <span className="nav-user-email">{user.email}</span>
               <button
-                className="icon-btn"
+                className="nav-btn"
                 aria-label="Sign Out"
                 onClick={signOut}
                 disabled={authLoading}
+                style={{ marginLeft: 8 }}
               >
                 <span role="img" aria-label="person">👤</span> Sign Out
               </button>
             </>
           ) : (
             <button
-              className="icon-btn"
+              className="nav-btn"
               aria-label="Sign In"
               onClick={() => openAuth("sign-in")}
+              style={{ marginLeft: 8 }}
             >
               <span role="img" aria-label="person">👤</span> Sign In
             </button>
           )}
         </div>
-      </header>
-      <main className="main-content">
-        {/* PAGE SWITCHING: Report Dashboard vs. Timer/tasks */}
+      </nav>
+      {/* Main content */}
+      <main className="design-main-content">
         {page === "report" ? (
           <ReportDashboard />
         ) : (
-          <>
-            <section className="timer-card">
-              {/* Tabs */}
-              <div className="mode-tabs">
+          <div className="design-main-grid">
+            <section className="timer-section">
+              {/* TABS */}
+              <div className="mode-tabs design-mode-tabs">
                 {MODES.map((m) => (
                   <button
                     key={m.key}
-                    className={`tab-pill${mode === m.key ? " active" : ""}`}
+                    className={`tab-btn${mode === m.key ? " active" : ""}`}
                     onClick={() => switchMode(m.key)}
                     aria-label={m.label}
-                    tabIndex="0"
                   >
                     {m.label}
                   </button>
                 ))}
               </div>
-              {/* Timer */}
-              <div className="timer-display">{formatTime(timeLeft)}</div>
-              {/* Start/pause Button */}
-              {!timerActive ? (
-                <button className="start-btn" onClick={handleStart}>
-                  {timeLeft < durations[mode] * 60 && timeLeft > 0 ? "RESUME" : "START"}
+              {/* TIMER DISPLAY */}
+              <div className="timer-display design-timer-display" tabIndex={0}>
+                <span className="timer-digits">{formatTime(timeLeft)}</span>
+              </div>
+              {/* TIMER CONTROLS */}
+              <div className="timer-controls">
+                {!timerActive ? (
+                  <button className="main-btn start" onClick={handleStart}>
+                    {timeLeft < durations[mode] * 60 && timeLeft > 0 ? "RESUME" : "START"}
+                  </button>
+                ) : (
+                  <button
+                    className="main-btn pause"
+                    onClick={handlePause}
+                  >
+                    PAUSE
+                  </button>
+                )}
+                <button className="main-btn reset" onClick={handleReset}>
+                  RESET
                 </button>
-              ) : (
-                <button className="start-btn" style={{ backgroundColor: "#fff8f7", color: "#c85f5f" }} onClick={handlePause}>
-                  PAUSE
-                </button>
-              )}
-              <div className="session-label">
+              </div>
+              {/* Session label and counter (per extracted design) */}
+              <div className="session-label design-session-label">
                 {mode === "pomodoro"
                   ? `#${sessionNum} Time to focus!`
                   : mode === "short_break"
                     ? "Short Break"
                     : "Long Break"}
               </div>
-
-              {/* New: Pomodoro Session History */}
+              {/* Pomodoro history (below timer) only if logged in */}
               {user && (
-                <div style={{ marginTop: "34px", width: "100%" }}>
-                  <div style={{fontWeight: 600, color: "#fff", textAlign: "left", marginBottom: "6px"}}>Recent Pomodoro Sessions</div>
+                <div style={{ marginTop: "1em", width: "100%" }}>
+                  <div className="pomodoro-history-label">Recent Pomodoros</div>
                   {sessionsLoading ? (
-                    <div style={{color: "#ffd"}}>Loading history…</div>
+                    <div className="design-loading-text">Loading…</div>
                   ) : sessionsError ? (
-                    <div style={{color: "#ffc9c9", fontSize: 14}}>Failed to load: {sessionsError.message}</div>
+                    <div className="design-session-error">Failed: {sessionsError.message}</div>
                   ) : (sessions && sessions.length > 0 ? (
                     <ul className="history-list">
                       {sessions
@@ -354,7 +351,7 @@ function PomodoroApp() {
                           const mins = Math.round(((end - start) || (s.duration*60000)) / 60000);
                           return (
                             <li key={s.id} className="history-pomodoro">
-                              <span style={{fontWeight:700, color:"#d95550"}}>#{sessions.length - idx}</span>
+                              <span style={{fontWeight:700, color:"var(--motif-orange)"}}>#{sessions.length - idx}</span>
                               <span>
                                 {start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}{" "}
                                 <span style={{ color: "#9d7f7f", fontSize: 13 }}>
@@ -374,12 +371,11 @@ function PomodoroApp() {
                 </div>
               )}
             </section>
-            {/* Tasks Section: Live CRUD from Supabase */}
             <TasksPane />
-          </>
+          </div>
         )}
       </main>
-      {/* Floating Action Buttons (shown only if not dashboard/report page) */}
+      {/* Floating action buttons in extracted style */}
       {page !== "report" && (
         <>
           <a
@@ -402,6 +398,7 @@ function PomodoroApp() {
 }
 
 /**
+ * PUBLIC_INTERFACE
  * Root App wraps with AuthProvider to make auth state available globally.
  */
 function App() {
