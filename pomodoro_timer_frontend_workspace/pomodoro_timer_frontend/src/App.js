@@ -5,89 +5,8 @@ import TasksPane from "./TasksPane";
 import { useSessions } from "./supabaseExamples";
 import ReportDashboard from "./ReportDashboard";
 import { AUTH_MODAL_CONSTANT_STYLES } from "./AuthModal.constants";
-
-/**
- * Simple generic modal
- * Always mounted, no conditional rendering, toggled via prop/class only.
- */
-const MODAL_BG_CENTER_STYLE = Object.freeze({
-  alignItems: "center",
-  justifyContent: "center"
-});
-
-/**
- * Modal backdrop click handler - stable by useCallback
- */
-const useModalBackdropHandler = (onClose) =>
-  React.useCallback(
-    (e) => {
-      if (e.target === e.currentTarget && typeof onClose === "function") onClose();
-    },
-    [onClose]
-  );
-
-/**
- * PUBLIC_INTERFACE
- * Generic Modal with stable styles and handlers.
- */
-function Modal({ open, onClose, title, children, actions }) {
-  // Memoized style (avoid recreating object)
-  const displayStyle = React.useMemo(
-    () => ({
-      display: open ? "flex" : "none",
-      ...MODAL_BG_CENTER_STYLE
-    }),
-    [open]
-  );
-  const handleBackdropClick = useModalBackdropHandler(onClose);
-
-  // Memo so actions array/btns have stable references, preventing unnecessary re-renders
-  const resolvedActions =
-    React.useMemo(
-      () =>
-        actions && actions.length > 0
-          ? actions
-          : [
-              {
-                label: "OK",
-                onClick: onClose,
-                className: "primary-btn",
-                autoFocus: true
-              }
-            ],
-      [actions, onClose]
-    );
-
-  return (
-    <div
-      className={`modal-bg${open ? " modal-bg--active" : ""}`}
-      style={displayStyle}
-      onClick={handleBackdropClick}
-      tabIndex={-1}
-      aria-modal="true"
-      role="dialog"
-    >
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>{title}</h2>
-        <div>{children}</div>
-        <div className="modal-actions">
-          {resolvedActions.map((a) => (
-            <button
-              key={a.label + (a.type || "")}
-              className={a.className || "primary-btn"}
-              onClick={typeof a.onClick === "function" ? a.onClick : undefined}
-              type={a.type || "button"}
-              autoFocus={a.autoFocus || false}
-              style={a.style}
-            >
-              {a.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+import Modal from "./Modal";
+import { AuthModal } from "./AuthModal";
 
 /**
  * PUBLIC_INTERFACE
@@ -282,130 +201,6 @@ function PomodoroApp() {
     [setAuthForm]
   );
 
-  // --- Hoisted AuthModal implementation ---
-  /**
-   * AuthModal: Always rendered, fields never unmounted, no key, conditional, or dynamic styles.
-   * Styles come ONLY from static constants, handlers are hoisted and stable, and state lives at parent level.
-   */
-  const AuthModal = React.useMemo(() =>
-    function AuthModalComponent() {
-      // Input refs for UX focus
-      useEffect(() => {
-        if (showAuthModal && authModalRef.current) {
-          authModalRef.current.focus();
-        }
-      }, [showAuthModal]);
-      // Static input styles (never inline/dynamic)
-      // No key, conditional render, or dynamic object instance per render
-      return (
-        <Modal
-          open={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          title={authMode === "sign-in" ? "Sign In" : "Sign Up"}
-          actions={authModalActions}
-        >
-          <form
-            onSubmit={handleAuthSubmit}
-            style={AUTH_FORM_STYLE}
-            autoComplete="on"
-            // Form is always rendered, field refs managed outside
-          >
-            <div>
-              {/* Email input: always stable */}
-              <input
-                ref={authModalRef}
-                type="email"
-                name="auth-email"
-                placeholder="Email"
-                value={authForm.email}
-                onChange={handleEmailChange}
-                autoComplete="username"
-                required
-                style={AUTH_INPUT_STYLE}
-                disabled={authLoading}
-                tabIndex={1}
-                // No key, no conditional, no dynamic style!
-              />
-            </div>
-            <div>
-              {/* Password input: always stable */}
-              <input
-                type="password"
-                name="auth-password"
-                placeholder="Password"
-                value={authForm.password}
-                onChange={handlePasswordChange}
-                autoComplete={authMode === "sign-in" ? "current-password" : "new-password"}
-                required
-                style={AUTH_INPUT_STYLE}
-                disabled={authLoading}
-                tabIndex={2}
-                // No key, no conditional, no dynamic style!
-              />
-            </div>
-            {(authLocalError || authError) && (
-              <div style={AUTH_ERR_STYLE}>
-                {authLocalError || authError?.message}
-              </div>
-            )}
-            <div style={AUTH_FLEX_ROW_STYLE}>
-              {authMode === "sign-in" ? (
-                <span style={AUTH_LABEL_STYLE}>
-                  Don't have an account?{" "}
-                  <button
-                    type="button"
-                    style={AUTH_LINK_BTN_STYLE}
-                    onClick={signUpSwitch}
-                    disabled={authLoading}
-                    tabIndex={3}
-                  >
-                    Sign Up
-                  </button>
-                </span>
-              ) : (
-                <span style={AUTH_LABEL_STYLE}>
-                  Already have an account?{" "}
-                  <button
-                    type="button"
-                    style={AUTH_LINK_BTN_STYLE}
-                    onClick={signInSwitch}
-                    disabled={authLoading}
-                    tabIndex={3}
-                  >
-                    Sign In
-                  </button>
-                </span>
-              )}
-            </div>
-          </form>
-        </Modal>
-      );
-    }, 
-    // Memoize only on static dependencies for handlers/state
-    [
-      showAuthModal, 
-      authMode, 
-      authModalActions, 
-      handleAuthSubmit, 
-      authForm.email, 
-      authForm.password, 
-      handleEmailChange, 
-      handlePasswordChange, 
-      AUTH_FORM_STYLE, 
-      AUTH_INPUT_STYLE, 
-      AUTH_FLEX_ROW_STYLE, 
-      AUTH_LINK_BTN_STYLE, 
-      AUTH_ERR_STYLE, 
-      AUTH_LABEL_STYLE, 
-      signUpSwitch, 
-      signInSwitch, 
-      authModalRef, 
-      authLoading, 
-      authLocalError, 
-      authError
-    ]
-  )();
-
   // Floating action button styles (unconditional for React Hooks)
   const FAB_LEFT_LINK_STYLE = React.useMemo(
     () => ({
@@ -428,7 +223,23 @@ function PomodoroApp() {
       >
         <div>{modalInfo.message}</div>
       </Modal>
-      <AuthModal />
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        authMode={authMode}
+        authForm={authForm}
+        authLoading={authLoading}
+        authError={authError ? authError.message : ""}
+        authLocalError={authLocalError}
+        actions={authModalActions}
+        onEmailChange={handleEmailChange}
+        onPasswordChange={handlePasswordChange}
+        onSwitchMode={{
+          toSignUp: signUpSwitch,
+          toSignIn: signInSwitch,
+        }}
+        onSubmit={handleAuthSubmit}
+      />
 
       {/* Header */}
       <header className="main-navbar">

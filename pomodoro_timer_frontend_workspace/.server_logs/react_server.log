@@ -6,9 +6,9 @@ Attempting to bind to HOST environment variable: 0.0.0.0
 If this was unintentional, check that you haven't mistakenly set it in your shell.
 Learn more here: https://cra.link/advanced-config
 
-(node:77755) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:78157) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 (Use `node --trace-deprecation ...` to show where the warning was created)
-(node:77755) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:78157) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 Starting the development server...
 
 Compiled successfully!
@@ -27,15 +27,91 @@ Compiled with warnings.
 
 [eslint] 
 src/App.js
-  Line 110:21:  'setDurations' is assigned a value but never used                                                                                                                                                                                               no-unused-vars
-  Line 297:10:  React Hook useEffect has an unnecessary dependency: 'showAuthModal'. Either exclude it or remove the dependency array. Outer scope values like 'showAuthModal' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+  Line 9:10:    'AuthModal' is defined but never used                                                                                                                                                                                                           no-unused-vars
+  Line 29:21:   'setDurations' is assigned a value but never used                                                                                                                                                                                               no-unused-vars
+  Line 216:10:  React Hook useEffect has an unnecessary dependency: 'showAuthModal'. Either exclude it or remove the dependency array. Outer scope values like 'showAuthModal' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
 
 Search for the keywords to learn more about each warning.
 To ignore, add // eslint-disable-next-line to the line before.
 
 WARNING in [eslint] 
 src/App.js
-  Line 110:21:  'setDurations' is assigned a value but never used                                                                                                                                                                                               no-unused-vars
-  Line 297:10:  React Hook useEffect has an unnecessary dependency: 'showAuthModal'. Either exclude it or remove the dependency array. Outer scope values like 'showAuthModal' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+  Line 9:10:    'AuthModal' is defined but never used                                                                                                                                                                                                           no-unused-vars
+  Line 29:21:   'setDurations' is assigned a value but never used                                                                                                                                                                                               no-unused-vars
+  Line 216:10:  React Hook useEffect has an unnecessary dependency: 'showAuthModal'. Either exclude it or remove the dependency array. Outer scope values like 'showAuthModal' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/App.js
+  Line 29:21:  'setDurations' is assigned a value but never used          no-unused-vars
+  Line 34:10:  'showAuthModal' is assigned a value but never used         no-unused-vars
+  Line 42:71:  'authError' is assigned a value but never used             no-unused-vars
+  Line 44:10:  'authLocalError' is assigned a value but never used        no-unused-vars
+  Line 160:9:  'authModalActions' is assigned a value but never used      no-unused-vars
+  Line 176:9:  'authModalRef' is assigned a value but never used          no-unused-vars
+  Line 179:9:  'AUTH_FORM_STYLE' is assigned a value but never used       no-unused-vars
+  Line 180:9:  'AUTH_INPUT_STYLE' is assigned a value but never used      no-unused-vars
+  Line 181:9:  'AUTH_FLEX_ROW_STYLE' is assigned a value but never used   no-unused-vars
+  Line 182:9:  'AUTH_LINK_BTN_STYLE' is assigned a value but never used   no-unused-vars
+  Line 183:9:  'AUTH_ERR_STYLE' is assigned a value but never used        no-unused-vars
+  Line 184:9:  'AUTH_LABEL_STYLE' is assigned a value but never used      no-unused-vars
+  Line 187:9:  'signUpSwitch' is assigned a value but never used          no-unused-vars
+  Line 188:9:  'signInSwitch' is assigned a value but never used          no-unused-vars
+  Line 189:9:  'handleEmailChange' is assigned a value but never used     no-unused-vars
+  Line 196:9:  'handlePasswordChange' is assigned a value but never used  no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/App.js
+  Line 29:21:  'setDurations' is assigned a value but never used          no-unused-vars
+  Line 34:10:  'showAuthModal' is assigned a value but never used         no-unused-vars
+  Line 42:71:  'authError' is assigned a value but never used             no-unused-vars
+  Line 44:10:  'authLocalError' is assigned a value but never used        no-unused-vars
+  Line 160:9:  'authModalActions' is assigned a value but never used      no-unused-vars
+  Line 176:9:  'authModalRef' is assigned a value but never used          no-unused-vars
+  Line 179:9:  'AUTH_FORM_STYLE' is assigned a value but never used       no-unused-vars
+  Line 180:9:  'AUTH_INPUT_STYLE' is assigned a value but never used      no-unused-vars
+  Line 181:9:  'AUTH_FLEX_ROW_STYLE' is assigned a value but never used   no-unused-vars
+  Line 182:9:  'AUTH_LINK_BTN_STYLE' is assigned a value but never used   no-unused-vars
+  Line 183:9:  'AUTH_ERR_STYLE' is assigned a value but never used        no-unused-vars
+  Line 184:9:  'AUTH_LABEL_STYLE' is assigned a value but never used      no-unused-vars
+  Line 187:9:  'signUpSwitch' is assigned a value but never used          no-unused-vars
+  Line 188:9:  'signInSwitch' is assigned a value but never used          no-unused-vars
+  Line 189:9:  'handleEmailChange' is assigned a value but never used     no-unused-vars
+  Line 196:9:  'handlePasswordChange' is assigned a value but never used  no-unused-vars
+
+webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/App.js
+  Line 29:21:  'setDurations' is assigned a value but never used         no-unused-vars
+  Line 176:9:  'authModalRef' is assigned a value but never used         no-unused-vars
+  Line 179:9:  'AUTH_FORM_STYLE' is assigned a value but never used      no-unused-vars
+  Line 180:9:  'AUTH_INPUT_STYLE' is assigned a value but never used     no-unused-vars
+  Line 181:9:  'AUTH_FLEX_ROW_STYLE' is assigned a value but never used  no-unused-vars
+  Line 182:9:  'AUTH_LINK_BTN_STYLE' is assigned a value but never used  no-unused-vars
+  Line 183:9:  'AUTH_ERR_STYLE' is assigned a value but never used       no-unused-vars
+  Line 184:9:  'AUTH_LABEL_STYLE' is assigned a value but never used     no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/App.js
+  Line 29:21:  'setDurations' is assigned a value but never used         no-unused-vars
+  Line 176:9:  'authModalRef' is assigned a value but never used         no-unused-vars
+  Line 179:9:  'AUTH_FORM_STYLE' is assigned a value but never used      no-unused-vars
+  Line 180:9:  'AUTH_INPUT_STYLE' is assigned a value but never used     no-unused-vars
+  Line 181:9:  'AUTH_FLEX_ROW_STYLE' is assigned a value but never used  no-unused-vars
+  Line 182:9:  'AUTH_LINK_BTN_STYLE' is assigned a value but never used  no-unused-vars
+  Line 183:9:  'AUTH_ERR_STYLE' is assigned a value but never used       no-unused-vars
+  Line 184:9:  'AUTH_LABEL_STYLE' is assigned a value but never used     no-unused-vars
 
 webpack compiled with 1 warning
