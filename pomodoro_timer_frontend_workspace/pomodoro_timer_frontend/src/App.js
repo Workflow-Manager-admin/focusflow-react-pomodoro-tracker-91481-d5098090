@@ -94,9 +94,12 @@ function App() {
 
   // Listen to mode or durations change and update timeLeft accordingly when not running
   useEffect(() => {
+    // Only reset timeLeft if the mode itself changes when the timer is *not* running
+    // (so switching tabs in middle of running timer does not force reset, and Pause keeps the current timeLeft)
     if (!timerActive) {
       setTimeLeft(durations[mode] * 60);
     }
+    // If the timer is paused, we do NOT touch timeLeft to allow exact pause/resume
   }, [mode, durations, timerActive]);
 
   // Persist state to localStorage on every relevant change
@@ -174,6 +177,8 @@ function App() {
 
   // PUBLIC_INTERFACE
   function handleSwitchMode(newMode) {
+    // If the mode is the same as current mode, do nothing
+    if (newMode === mode) return;
     setTimerActive(false);
     setMode(newMode);
     setTimeLeft(durations[newMode] * 60);
@@ -282,7 +287,7 @@ function App() {
                 className="main-btn start"
                 style={{ background: "var(--primary-color)" }}
                 onClick={handleStart}
-              >Start</button>
+              >{timeLeft < durations[mode]*60 ? "Resume" : "Start"}</button>
             ) : (
               <button
                 className="main-btn pause"
