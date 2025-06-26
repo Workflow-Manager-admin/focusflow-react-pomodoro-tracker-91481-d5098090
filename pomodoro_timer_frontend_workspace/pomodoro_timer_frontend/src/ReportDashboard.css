@@ -1,0 +1,195 @@
+:root {
+  --dashboard-bg: #e68484;
+  --dashboard-card-bg: #fbfafb;
+  --dashboard-title: #fff;
+  --dashboard-motif-pink: #fd7fa5;
+  --dashboard-yellow: #ffd67c;
+  --dashboard-red: #d95550;
+  --dashboard-metrics-bg: #fff5dfed;
+  --dashboard-accent1: #fd7fa5;
+  --dashboard-accent2: #ffe7b3;
+  --dashboard-accent3: #fd7fa5;
+  --dashboard-pie-color-1: #FFD67C;
+  --dashboard-pie-color-2: #FD7FA5;
+  --dashboard-pie-color-3: #71AEFF;
+  --dashboard-pie-color-4: #82E0A1;
+  --dashboard-pie-color-5: #E87A41;
+}
+
+/* Dashboard overall background and wrapper */
+.dashboard-wrapper {
+  background: var(--dashboard-bg);
+  border-radius: 26px;
+  box-shadow: 0 4px 32px #e87a414a, 0 1.5px 7px #ffd67c22;
+  padding: 2.7em 1.5em;
+  margin: 32px auto 0 auto;
+  max-width: 620px;
+  width: 96%;
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-title-row {
+  font-family: 'Inter', Arial, sans-serif;
+  font-weight: 800;
+  font-size: 2.1rem;
+  color: var(--dashboard-title);
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 16px #e87a416f, 0 2px 9px #fd7fa544;
+}
+.dashboard-description {
+  color: var(--dashboard-accent2);
+  font-size: 1.08rem;
+  margin-bottom: 26px;
+  max-width: 520px;
+  text-align: center;
+  opacity: 0.96;
+}
+
+.dashboard-motif {
+  width: 108px;
+  display: block;
+  margin: 0 auto 26px auto;
+  filter: drop-shadow(0 6px 18px #fd7fa599);
+  opacity: 0.64;
+}
+
+.dashboard-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 1.11rem;
+  margin-bottom: 2.6rem;
+}
+
+.dashboard-metric-card {
+  background: var(--dashboard-metrics-bg);
+  border-radius: 15px;
+  border: 2px dashed var(--dashboard-yellow);
+  display: flex;
+  flex-direction: column;
+  padding: 1.04em 1em 1em 1.18em;
+  box-shadow: 0 2.5px 19px #e87a414a, 0 0.5px 3px #fd7fa524;
+  min-height: 83px;
+  opacity: 0.97;
+  position: relative;
+  justify-content: center;
+}
+.dashboard-metric-value {
+  font-size: 1.46rem;
+  font-weight: 800;
+  color: var(--dashboard-yellow);
+  letter-spacing: .04em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dashboard-metric-label {
+  color: #d95550e8;
+  margin-top: 5px;
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+.dashboard-metric-desc {
+  color: #fd7fa5aa;
+  margin-top: 3px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  opacity: 0.71;
+}
+
+.dashboard-charts-section,
+.dashboard-pie-section {
+  width: 98%;
+  background: #fff5df80;
+  border-radius: 17px;
+  margin: 0 auto 19px auto;
+  padding: 17px 13px 9px 13px;
+  box-shadow: 0 2px 12px #ffd67c20;
+  border: 2px dashed var(--dashboard-accent3);
+}
+.dashboard-pie-section {
+  padding-bottom: 10px;
+}
+
+.dashboard-section-title {
+  font-weight: 700;
+  color: var(--dashboard-yellow);
+  font-size: 1.07rem;
+  margin-bottom: 2px;
+  letter-spacing: 0.023em;
+}
+.dashboard-section-desc {
+  font-size: 0.88rem;
+  color: #e6848448;
+  margin-bottom: 10px;
+  letter-spacing: .01em;
+}
+
+/* Bar chart tweaks */
+.dashboard-sparkbar-root {
+  display: flex;
+  height: 65px;
+  align-items: flex-end;
+  gap: 9px;
+  width: 97%;
+  margin: 10px auto 2px auto;
+}
+
+/* Pie chart SVG and legend styles */
+.dashboard-pie-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.dashboard-pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 7px;
+  width: 90%;
+}
+.dashboard-pie-legend-item {
+  font-size: 0.92rem;
+  color: #d95550;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  gap: 9px;
+  opacity: 0.93;
+}
+.dashboard-pie-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1.3px solid #fff6;
+}
+
+/* All-time stat */
+.dashboard-alltime-stat {
+  color: var(--dashboard-yellow);
+  padding-top: 14px;
+  font-weight: 700;
+  text-align: center;
+  font-size: 1.1rem;
+  text-shadow: 0 3px 14px #ffd67c36;
+}
+
+/* Mobile responsive */
+@media (max-width: 700px) {
+  .dashboard-wrapper {
+    max-width: 99vw;
+    border-radius: 13px;
+    padding: 1.3em 0.3em !important;
+  }
+  .dashboard-charts-section,
+  .dashboard-pie-section {
+    padding: 11px 2vw 7px 2vw;
+    border-radius: 12px;
+    margin-bottom: 1.22em;
+  }
+  .dashboard-title-row {
+    font-size: 1.23rem;
+  }
+}

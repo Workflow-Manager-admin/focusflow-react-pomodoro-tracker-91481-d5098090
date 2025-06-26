@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import supabase from "./supabaseClient";
 import { useSessions, useTasks } from "./supabaseExamples";
 import { useAuth } from "./AuthContext";
-
+import "./ReportDashboard.css";
 /**
  * Utility: Calculate stats and series for metrics/cards/charts.
  */
@@ -152,10 +152,7 @@ function SparkBarChart({ data }) {
   // data: [{ date, dow, pomos }]
   const max = data.reduce((acc, d) => Math.max(acc, d.pomos), 1);
   return (
-    <div style={{
-      display: "flex", height: 65, alignItems: "flex-end", gap: 9, width: "94%",
-      margin: "10px auto 2px auto"
-    }}>
+    <div className="dashboard-sparkbar-root">
       {data.map((d, i) => (
         <div key={d.date} title={`${d.dow}: ${d.pomos} pomodoros`} style={{
           display: "flex", flexDirection: "column", alignItems: "center"
@@ -164,7 +161,7 @@ function SparkBarChart({ data }) {
             style={{
               width: 22, minWidth: 18,
               height: `${(d.pomos / (max || 1)) * 55 + 5}px`,
-              background: d.pomos === max ? "#FFD67C" : "#fff6eb",
+              background: d.pomos === max ? "var(--dashboard-yellow)" : "#fff6eb",
               border: "2.7px dashed #E87A41",
               borderBottomLeftRadius: 7, borderBottomRightRadius: 7,
               boxShadow: d.pomos === max ? "0 4px 15px #FFD67C77" : "",
@@ -220,7 +217,7 @@ function PieChart({ data }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div className="dashboard-pie-root">
       <svg width={80} height={80} aria-label="Task breakdown pie chart">
         {slices.map((sl, i) => (
           <path
@@ -237,23 +234,10 @@ function PieChart({ data }) {
         ))}
       </svg>
       {/* Legend */}
-      <div style={{
-        display: "flex", flexDirection: "column", gap: 3, marginTop: 7, width: "92%"
-      }}>
+      <div className="dashboard-pie-legend">
         {slices.map((sl, i) => (
-          <span key={sl.task}
-            style={{
-              fontSize: 13.5,
-              color: "#fff",
-              display: "flex", alignItems: "center", gap: 7,
-              opacity: 0.95,
-              fontWeight: 500,
-            }}>
-            <span style={{
-              width: 13, height: 13, borderRadius: "50%",
-              display: "inline-block", background: colors[i % colors.length],
-              border: "1.2px solid #fff5"
-            }} />
+          <span className="dashboard-pie-legend-item" key={sl.task}>
+            <span className="dashboard-pie-dot" style={{ background: colors[i % colors.length] }} />
             <span>
               {sl.task.length > 18 ? sl.task.slice(0, 16) + "…" : sl.task}
             </span>
@@ -329,49 +313,18 @@ export default function ReportDashboard() {
 
   // Dashboard UI layout
   return (
-    <div className="dashboard-wrapper"
-      style={{
-        width: "100%",
-        maxWidth: 620,
-        margin: "0 auto",
-        padding: "44px 8vw 40px 8vw",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center"
-      }}>
+    <div className="dashboard-wrapper">
       {/* Title and motif */}
-      <div style={{
-        fontSize: 29,
-        fontWeight: 800,
-        letterSpacing: ".04em",
-        textAlign: "center",
-        color: "#fff",
-        textShadow: "0 2px 16px #e87a416f, 0 3px 20px #fff6",
-        marginBottom: 10,
-      }}>
-        <span role="img" aria-label="analytics" style={{
-          filter: "drop-shadow(0 1.5px 9px #fd7fa566)"
-        }}>📊</span>{" "}
-        Report Dashboard
+      <div className="dashboard-title-row">
+        <span role="img" aria-label="analytics" style={{filter: "drop-shadow(0 1.5px 9px #fd7fa566)"}}>📊</span>
+        {" "}Report Dashboard
       </div>
-      <div style={{
-        color: "#ffe7b3", fontSize: 17, marginBottom: 27,
-        textAlign: "center",
-        maxWidth: 540,
-        opacity: 0.95
-      }}>
+      <div className="dashboard-description">
         All your Pomodoro stats, activity trends & streaks at a glance.<br />
-        <span style={{ color: "#FFD67C", fontWeight: 600 }}>Stay motivated and mindful!</span>
+        <span style={{ color: "var(--dashboard-yellow)", fontWeight: 600 }}>Stay motivated and mindful!</span>
       </div>
-      {/* Motif visual - unique line SVG */}
-      <svg width={104} height={39}
-        style={{
-          display: "block",
-          margin: "0 auto 28px auto",
-          filter: "drop-shadow(0 6px 18px #fd7fa599)",
-          opacity: 0.65
-        }}
-        aria-label="Motif line">
+      {/* Motif line */}
+      <svg className="dashboard-motif" width={104} height={39} aria-label="Motif line">
         <path
           d="M4 33 Q30 5 52 17 Q86 37 100 5"
           stroke="#FD7FA5"
@@ -381,106 +334,36 @@ export default function ReportDashboard() {
           strokeLinecap="round"
         />
       </svg>
-
       {/* Metrics Cards Row */}
-      <div
-        className="dashboard-metrics-row"
-        style={{
-          width: "100%",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(137px, 1fr))",
-          gap: 18,
-          marginBottom: 38,
-          justifyContent: "center"
-        }}>
+      <div className="dashboard-metrics-row">
         {metrics.slice(0, 4).map((m, i) => (
-          <div key={m.label} style={{
-            background: "#c85f5f",
-            borderRadius: 18,
-            padding: "19px 12px 19px 15px",
-            display: "flex", flexDirection: "column", alignItems: "flex-start",
-            boxShadow: "0 2.5px 19px #e87a414a",
-            border: "1.7px dashed #FFD67C",
-            minHeight: 86,
-            justifyContent: "center",
-            opacity: 0.94,
-            position: "relative"
-          }}>
-            <div style={{
-              fontSize: 21,
-              fontWeight: 800,
-              color: "#FFD67C",
-              letterSpacing: ".04em",
-              display: "flex",
-              alignItems: "center",
-              gap: 8
-            }}>
+          <div key={m.label} className="dashboard-metric-card">
+            <div className="dashboard-metric-value">
               <span style={{ fontSize: 22, filter: "drop-shadow(0 2px 7px #ffd67c62)" }}>{m.motif}</span>
               {m.value}
             </div>
-            <div style={{
-              fontSize: 13.4,
-              marginTop: 5,
-              color: "#fff9",
-              fontWeight: 600,
-              opacity: 0.93,
-              letterSpacing: ".02em"
-            }}>{m.label}</div>
-            <div style={{
-              fontSize: 11.5, color: "#fab", fontWeight: 500,
-              marginTop: 2, opacity: 0.8
-            }}>
-              {m.desc}
-            </div>
+            <div className="dashboard-metric-label">{m.label}</div>
+            <div className="dashboard-metric-desc">{m.desc}</div>
           </div>
         ))}
       </div>
       {/* Bar chart section */}
-      <div className="dashboard-charts-section" style={{
-        width: "98%",
-        background: "#c85f5f",
-        borderRadius: 19,
-        margin: "0 auto 22px auto",
-        padding: "19px 17px 9px 17px",
-        boxShadow: "0 1.5px 11px #ffd67c34",
-        border: "1.7px dashed #FD7FA5"
-      }}>
-        <div style={{
-          fontWeight: 700, color: "#ffd67c", fontSize: 15.5, marginBottom: 4,
-          letterSpacing: ".025em"
-        }}>
+      <div className="dashboard-charts-section">
+        <div className="dashboard-section-title">
           Last 7 Days Activity
         </div>
-        <div style={{ fontSize: 12.5, color: "#fff5", marginBottom: 8, letterSpacing: ".01em" }}>Pomodoros per day</div>
+        <div className="dashboard-section-desc">Pomodoros per day</div>
         <SparkBarChart data={last7Days} />
       </div>
       {/* Pie chart: Task breakdown (if any tasks use) */}
-      <div className="dashboard-pie-section" style={{
-        width: "98%",
-        background: "#c85f5f",
-        borderRadius: 19,
-        margin: "0 auto 23px auto",
-        padding: "16px 11px 2px 11px",
-        boxShadow: "0 1.5px 11px #ffd67c32",
-        border: "1.7px dashed #FFD67C"
-      }}>
-        <div style={{
-          fontWeight: 700, color: "#ffd67c", fontSize: 15, marginBottom: 2,
-          letterSpacing: ".023em"
-        }}>
+      <div className="dashboard-pie-section">
+        <div className="dashboard-section-title">
           Top Tasks (Pomodoros)
         </div>
         <PieChart data={pomoByTask} />
       </div>
       {/* All-time cta/stat */}
-      <div style={{
-        color: "#FFD67C",
-        padding: "12px 0 0 2px",
-        fontWeight: 700,
-        textAlign: "center",
-        fontSize: 16.5,
-        textShadow: "0 3px 14px #ffd67c36"
-      }}>
+      <div className="dashboard-alltime-stat">
         <span role="img" aria-label="trophy" style={{ fontSize: 19 }}>
           🏆
         </span>{" "}
