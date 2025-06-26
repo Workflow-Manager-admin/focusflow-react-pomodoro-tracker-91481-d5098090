@@ -1,6 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 
+// Simple Modal Component
+function Modal({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h2>{title}</h2>
+        <div>{children}</div>
+        <div className="modal-actions">
+          <button className="primary-btn" onClick={onClose} autoFocus>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // PUBLIC_INTERFACE
 function App() {
   // Pomodoro state machine, timers, and durations (same logic as before)
@@ -15,6 +33,7 @@ function App() {
   const [timeLeft, setTimeLeft] = useState(DEFAULT_DURATIONS[mode] * 60);
   const [timerActive, setTimerActive] = useState(false);
   const [sessionNum, setSessionNum] = useState(1);
+  const [modalInfo, setModalInfo] = useState({ open: false, title: "", message: "" });
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -60,19 +79,55 @@ function App() {
     { text: "Review PRs" },
   ];
 
+  // Modal open helpers
+  function showComingSoonModal(feature) {
+    setModalInfo({
+      open: true,
+      title: `${feature} Coming Soon!`,
+      message: `This feature is not yet available. Please check back in a future update.`,
+    });
+  }
+
+  // "Visit site" action
+  function handleVisitSite(e) {
+    e.preventDefault();
+    window.open("https://placeholder-website.com", "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="app-root">
+      {/* Modals */}
+      <Modal
+        open={modalInfo.open}
+        onClose={() => setModalInfo({ ...modalInfo, open: false })}
+        title={modalInfo.title}
+      >
+        <div>{modalInfo.message}</div>
+      </Modal>
+
       {/* Header */}
       <header className="main-navbar">
         <span className="logo">Pomofocus</span>
         <div className="icon-btn-group">
-          <button className="icon-btn" aria-label="Reports">
+          <button
+            className="icon-btn"
+            aria-label="Reports"
+            onClick={() => showComingSoonModal("Reports")}
+          >
             <span role="img" aria-label="bar-chart">📊</span> Report
           </button>
-          <button className="icon-btn" aria-label="Settings">
+          <button
+            className="icon-btn"
+            aria-label="Settings"
+            onClick={() => showComingSoonModal("Settings")}
+          >
             <span role="img" aria-label="gear">⚙️</span> Setting
           </button>
-          <button className="icon-btn" aria-label="Sign In">
+          <button
+            className="icon-btn"
+            aria-label="Sign In"
+            onClick={() => showComingSoonModal("Sign In")}
+          >
             <span role="img" aria-label="person">👤</span> Sign In
           </button>
         </div>
@@ -101,7 +156,7 @@ function App() {
               {timeLeft < durations[mode] * 60 && timeLeft > 0 ? "RESUME" : "START"}
             </button>
           ) : (
-            <button className="start-btn" style={{backgroundColor: '#fff8f7', color: '#c85f5f'}} onClick={handlePause}>
+            <button className="start-btn" style={{ backgroundColor: "#fff8f7", color: "#c85f5f" }} onClick={handlePause}>
               PAUSE
             </button>
           )}
@@ -109,8 +164,8 @@ function App() {
             {mode === "pomodoro"
               ? `#${sessionNum} Time to focus!`
               : mode === "short_break"
-              ? "Short Break"
-              : "Long Break"}
+                ? "Short Break"
+                : "Long Break"}
           </div>
         </section>
         {/* Tasks Section */}
@@ -122,11 +177,11 @@ function App() {
             </button>
           </div>
           <div className="tasks-divider" />
-          <button className="add-task-btn"><span style={{fontSize: 20, fontWeight: 700}}>+</span> Add Task</button>
+          <button className="add-task-btn"><span style={{ fontSize: 20, fontWeight: 700 }}>+</span> Add Task</button>
           {/* Tasks List: For demo, static */}
           {TASKS.map((task, i) => (
             <div key={i} className="task-item" style={{
-              color: "var(--primary-text)", padding: "12px 0", borderBottom: i !== TASKS.length-1 ? "1px dashed #fff4" : "none"
+              color: "var(--primary-text)", padding: "12px 0", borderBottom: i !== TASKS.length - 1 ? "1px dashed #fff4" : "none"
             }}>
               {task.text}
             </div>
@@ -134,7 +189,12 @@ function App() {
         </section>
       </main>
       {/* Floating Action Buttons */}
-      <button className="fab fab-left" aria-label="Visit site">
+      <button
+        className="fab fab-left"
+        aria-label="Visit site"
+        onClick={handleVisitSite}
+        style={{ transition: "background 0.15s, outline 0.15s" }}
+      >
         <span role="img" aria-label="external">↗️</span> Visit site
       </button>
       <button className="fab fab-right" aria-label="Reset timer" onClick={handleReset}>
