@@ -206,6 +206,25 @@ function PomodoroApp() {
   // Ensure modal is not re-mounted or re-animated on every keystroke
   const authModalRef = useRef(null); // only for focusing
 
+  // --- Bugfix: Refactored AuthModal to avoid shuffle/jump effect when typing in the modal.
+  // Save actions object outside render for modal, so the identity is stable and not created anew each render.
+  // Remove `key="auth-modal"` from <Modal>. Key on a component with persistent state can force remounts.
+  // Use React.useMemo to ensure the actions array stays identical between renders (unless dependencies change).
+  const authModalActions = React.useMemo(() => [
+    {
+      label: authMode === "sign-in" ? "Sign In" : "Sign Up",
+      onClick: handleAuthSubmit,
+      type: "submit",
+      className: "primary-btn",
+      autoFocus: true
+    },
+    {
+      label: "Cancel",
+      onClick: () => setShowAuthModal(false),
+      className: "secondary-btn"
+    }
+  ], [authMode, handleAuthSubmit, setShowAuthModal]);
+
   function AuthModal() {
     // Setup effect only to focus when modal is shown
     useEffect(() => {
@@ -213,28 +232,13 @@ function PomodoroApp() {
         authModalRef.current.focus();
       }
     }, [showAuthModal]);
-    // Use a persistent rendering, minimize prop changes to Modal (prevent re-mount/re-animate)
+    // Use persistent actions to prevent changing the identity of the actions array
     return (
       <Modal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         title={authMode === "sign-in" ? "Sign In" : "Sign Up"}
-        actions={[
-          {
-            label: authMode === "sign-in" ? "Sign In" : "Sign Up",
-            onClick: handleAuthSubmit,
-            type: "submit",
-            className: "primary-btn",
-            autoFocus: true
-          },
-          {
-            label: "Cancel",
-            onClick: () => setShowAuthModal(false),
-            className: "secondary-btn"
-          }
-        ]}
-        // prevent Modal component from re-creating (identity stays consistent)
-        key="auth-modal"
+        actions={authModalActions}
       >
         <form
           onSubmit={handleAuthSubmit}
