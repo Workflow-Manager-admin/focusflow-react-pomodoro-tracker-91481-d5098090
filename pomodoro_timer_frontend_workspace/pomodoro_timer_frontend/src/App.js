@@ -89,10 +89,7 @@ function App() {
   }
 
   // "Visit site" action
-  function handleVisitSite(e) {
-    e.preventDefault();
-    window.open("https://placeholder-website.com", "_blank", "noopener,noreferrer");
-  }
+  // Removed direct JS navigation in favor of external anchor tag for reliability.
 
   return (
     <div className="app-root">
@@ -189,14 +186,16 @@ function App() {
         </section>
       </main>
       {/* Floating Action Buttons */}
-      <button
+      <a
         className="fab fab-left"
         aria-label="Visit site"
-        onClick={handleVisitSite}
-        style={{ transition: "background 0.15s, outline 0.15s" }}
+        href="https://pomofocus.io" 
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ transition: "background 0.15s, outline 0.15s", display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}
       >
         <span role="img" aria-label="external">↗️</span> Visit site
-      </button>
+      </a>
       <button className="fab fab-right" aria-label="Reset timer" onClick={handleReset}>
         <span role="img" aria-label="refresh">↻</span>
       </button>
