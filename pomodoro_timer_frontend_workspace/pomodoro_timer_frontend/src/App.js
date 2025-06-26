@@ -174,7 +174,13 @@ function App() {
             </button>
           </div>
           <div className="tasks-divider" />
-          <button className="add-task-btn"><span style={{ fontSize: 20, fontWeight: 700 }}>+</span> Add Task</button>
+          <button
+            className="add-task-btn"
+            aria-label="Add Task"
+            onClick={() => showComingSoonModal("Add Task")}
+          >
+            <span style={{ fontSize: 20, fontWeight: 700 }}>+</span> Add Task
+          </button>
           {/* Tasks List: For demo, static */}
           {TASKS.map((task, i) => (
             <div key={i} className="task-item" style={{
