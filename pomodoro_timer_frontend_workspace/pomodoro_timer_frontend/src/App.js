@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import TasksPane from "./TasksPane";
 import { useSessions } from "./supabaseExamples";
 import ReportDashboard from "./ReportDashboard";
+import { AUTH_MODAL_CONSTANT_STYLES } from "./AuthModal.constants";
 
 /**
  * Simple generic modal
@@ -255,44 +256,17 @@ function PomodoroApp() {
   // Always render AuthModal in tree (never conditional). All handler/style refs hoisted for stable identity.
   const authModalRef = useRef(null); // focus target
 
-  // Hoisted constant styles (Object.freeze for safety)
-  const AUTH_FORM_STYLE = React.useMemo(() => Object.freeze({
-    display: "flex",
-    flexDirection: "column",
-    gap: 16
-  }), []);
-  const AUTH_INPUT_STYLE = React.useMemo(() => Object.freeze({
-    fontSize: 16,
-    padding: "0.46em",
-    borderRadius: 6,
-    marginBottom: 7
-  }), []);
-  const AUTH_FLEX_ROW_STYLE = React.useMemo(() => Object.freeze({
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    marginTop: 7
-  }), []);
-  const AUTH_LINK_BTN_STYLE = React.useMemo(() => Object.freeze({
-    background: "none",
-    border: "none",
-    color: "#d95550",
-    cursor: "pointer"
-  }), []);
-  const AUTH_ERR_STYLE = React.useMemo(() => Object.freeze({
-    color: "#d95550",
-    fontWeight: 500,
-    marginBottom: 2
-  }), []);
-  const AUTH_LABEL_STYLE = React.useMemo(() => Object.freeze({
-    color: "#999",
-    fontSize: 14
-  }), []);
+  // --- Hoisted stable styles/objects for Auth modal fields/buttons (Object.freeze outside component for referential equality) ---
+  const AUTH_FORM_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_FORM_STYLE;
+  const AUTH_INPUT_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_INPUT_STYLE;
+  const AUTH_FLEX_ROW_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_FLEX_ROW_STYLE;
+  const AUTH_LINK_BTN_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_LINK_BTN_STYLE;
+  const AUTH_ERR_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_ERR_STYLE;
+  const AUTH_LABEL_STYLE = AUTH_MODAL_CONSTANT_STYLES.AUTH_LABEL_STYLE;
 
-  // Stable handlers (never recreated on re-render)
+  // --- Stable handlers/refs ---
   const signUpSwitch = React.useCallback(() => setAuthMode("sign-up"), [setAuthMode]);
   const signInSwitch = React.useCallback(() => setAuthMode("sign-in"), [setAuthMode]);
-  // These two update inputs; need only update the respective property.
   const handleEmailChange = React.useCallback(
     (e) => {
       const val = e.target.value;
@@ -308,7 +282,7 @@ function PomodoroApp() {
     [setAuthForm]
   );
 
-  // AuthModal component with stable handlers
+  // --- Hoisted AuthModal implementation ---
   function AuthModal() {
     useEffect(() => {
       if (showAuthModal && authModalRef.current) {
