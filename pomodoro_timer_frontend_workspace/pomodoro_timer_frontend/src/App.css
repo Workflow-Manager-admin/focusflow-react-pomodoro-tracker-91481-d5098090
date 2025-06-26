@@ -615,6 +615,10 @@ body, .app-root {
   min-width: 300px;
   max-width: 94vw;
   min-height: 120px;
+  /* Only animate when .modal is appearing from none -> block using 'modal-bg--active' class */
+  animation: none;
+}
+.modal-bg--active .modal {
   animation: modal-pop 0.22s cubic-bezier(.71,.01,.45,1.03);
 }
 @keyframes modal-pop {

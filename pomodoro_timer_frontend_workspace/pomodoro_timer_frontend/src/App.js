@@ -8,12 +8,12 @@ import { useSessions } from "./supabaseExamples";
  * Simple generic modal
  */
 function Modal({ open, onClose, title, children, actions }) {
-  // Fix: Handle focus trap and let the modal close only when backdrop is clicked or explicit actions, not on internal input events.
+  // Only render when modal should be open
   if (!open) return null;
+  // Add a special class to parent to control animation (it only runs on mount)
   return (
     <div
-      className="modal-bg"
-      // Only close on backdrop click, not on any focus/input event
+      className="modal-bg modal-bg--active"
       onClick={(e) => {
         // Only trigger close if user clicked directly on the backdrop, not any descendant (like input)
         if (e.target === e.currentTarget && typeof onClose === 'function') onClose();
@@ -31,7 +31,6 @@ function Modal({ open, onClose, title, children, actions }) {
                 <button
                   key={i}
                   className={a.className || "primary-btn"}
-                  // Only call a.onClick if it's a function
                   onClick={typeof a.onClick === "function" ? a.onClick : undefined}
                   type={a.type || "button"}
                   autoFocus={a.autoFocus || false}
@@ -204,13 +203,17 @@ function PomodoroApp() {
   }
 
   // UI for Sign-In/Sign-Up modal
+  // Ensure modal is not re-mounted or re-animated on every keystroke
+  const authModalRef = useRef(null); // only for focusing
+
   function AuthModal() {
-    const emailInputRef = useRef(null);
+    // Setup effect only to focus when modal is shown
     useEffect(() => {
-      if (showAuthModal && emailInputRef.current) {
-        emailInputRef.current.focus();
+      if (showAuthModal && authModalRef.current) {
+        authModalRef.current.focus();
       }
     }, [showAuthModal]);
+    // Use a persistent rendering, minimize prop changes to Modal (prevent re-mount/re-animate)
     return (
       <Modal
         open={showAuthModal}
@@ -230,10 +233,16 @@ function PomodoroApp() {
             className: "secondary-btn"
           }
         ]}
+        // prevent Modal component from re-creating (identity stays consistent)
+        key="auth-modal"
       >
-        <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <form
+          onSubmit={handleAuthSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}
+          autoComplete="on"
+        >
           <input
-            ref={emailInputRef}
+            ref={authModalRef}
             type="email"
             placeholder="Email"
             value={authForm.email}
@@ -242,6 +251,7 @@ function PomodoroApp() {
             required
             style={{ fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 }}
             disabled={authLoading}
+            tabIndex={1}
           />
           <input
             type="password"
@@ -252,6 +262,7 @@ function PomodoroApp() {
             required
             style={{ fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 }}
             disabled={authLoading}
+            tabIndex={2}
           />
           {(authLocalError || authError) && (
             <div style={{ color: "#d95550", fontWeight: 500, marginBottom: 2 }}>
@@ -267,6 +278,7 @@ function PomodoroApp() {
                   style={{ background: "none", border: "none", color: "#d95550", cursor: "pointer" }}
                   onClick={() => setAuthMode("sign-up")}
                   disabled={authLoading}
+                  tabIndex={3}
                 >
                   Sign Up
                 </button>
@@ -279,6 +291,7 @@ function PomodoroApp() {
                   style={{ background: "none", border: "none", color: "#d95550", cursor: "pointer" }}
                   onClick={() => setAuthMode("sign-in")}
                   disabled={authLoading}
+                  tabIndex={3}
                 >
                   Sign In
                 </button>
