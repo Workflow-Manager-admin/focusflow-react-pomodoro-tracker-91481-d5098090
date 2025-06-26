@@ -8,9 +8,20 @@ import { useSessions } from "./supabaseExamples";
  * Simple generic modal
  */
 function Modal({ open, onClose, title, children, actions }) {
+  // Fix: Handle focus trap and let the modal close only when backdrop is clicked or explicit actions, not on internal input events.
   if (!open) return null;
   return (
-    <div className="modal-bg" onClick={onClose}>
+    <div
+      className="modal-bg"
+      // Only close on backdrop click, not on any focus/input event
+      onClick={(e) => {
+        // Only trigger close if user clicked directly on the backdrop, not any descendant (like input)
+        if (e.target === e.currentTarget && typeof onClose === 'function') onClose();
+      }}
+      tabIndex={-1}
+      aria-modal="true"
+      role="dialog"
+    >
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h2>{title}</h2>
         <div>{children}</div>
@@ -20,7 +31,8 @@ function Modal({ open, onClose, title, children, actions }) {
                 <button
                   key={i}
                   className={a.className || "primary-btn"}
-                  onClick={a.onClick}
+                  // Only call a.onClick if it's a function
+                  onClick={typeof a.onClick === "function" ? a.onClick : undefined}
                   type={a.type || "button"}
                   autoFocus={a.autoFocus || false}
                   style={a.style}
@@ -193,6 +205,12 @@ function PomodoroApp() {
 
   // UI for Sign-In/Sign-Up modal
   function AuthModal() {
+    const emailInputRef = useRef(null);
+    useEffect(() => {
+      if (showAuthModal && emailInputRef.current) {
+        emailInputRef.current.focus();
+      }
+    }, [showAuthModal]);
     return (
       <Modal
         open={showAuthModal}
@@ -215,6 +233,7 @@ function PomodoroApp() {
       >
         <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <input
+            ref={emailInputRef}
             type="email"
             placeholder="Email"
             value={authForm.email}
