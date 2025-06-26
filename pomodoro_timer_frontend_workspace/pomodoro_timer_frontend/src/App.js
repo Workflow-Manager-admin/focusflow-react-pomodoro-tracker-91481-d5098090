@@ -92,33 +92,31 @@ function App() {
     // eslint-disable-next-line
   }, []);
 
-  // Listen to mode and durations change and update timeLeft
+  // Listen to mode and durations change and update timeLeft (only reset when at clean state)
   useEffect(() => {
-    // This effect should only change timeLeft if:
-    //  - the timer is not running AND
-    //  - we are NOT in the middle of a paused session (i.e., timeLeft matches exact default/durations - NOT when paused mid-session)
-    // To support exact pause/resume, we do NOT update timeLeft on mode change if we are paused mid-session.
+    // Only update timeLeft if the timer is not running *and* timeLeft corresponds to start/end of session, 
+    // so Pause preserves remaining time, and Resume correctly continues.
     if (!timerActive) {
       setTimeLeft((prev) => {
         const expected = durations[mode] * 60;
-        // If the current timeLeft matches a duration or is zero (end-of-session), allow reset; 
-        // else, keep current (handles paused mid-session case)
+        // Only reset if exactly at "clean start/end" state; otherwise, leave timeLeft untouched for mid-session resume
         if (
           prev === DEFAULT_DURATIONS[mode] * 60 ||
           prev === durations[mode] * 60 ||
           prev <= 0
         ) {
-          console.debug("[Pomodoro] useEffect: mode/durations changed; updating timeLeft to", expected, "mode=", mode);
+          console.debug("[Pomodoro] useEffect: mode/durations changed; resetting timeLeft to", expected, "mode=", mode);
           return expected;
         }
-        console.debug("[Pomodoro] useEffect: mode/durations changed; timer paused mid-session, keep current timeLeft=", prev, "mode=", mode);
-        return prev; // do not override paused value
+        // Robust: if paused mid-session (different from natural duration), preserve paused value
+        console.debug("[Pomodoro] useEffect: mode/durations changed; timer paused mid-session (not overriding timeLeft)", prev, "mode=", mode);
+        return prev;
       });
     } else {
+      // Changing session params while running = no effect, always return to current ticking time
       console.debug("[Pomodoro] useEffect: mode/durations changed during ACTIVE timer. No timeLeft mutation. mode=", mode);
     }
-    // Do not change timeLeft during pause so paused sessions can be resumed at same point
-  }, [mode, durations]); // removed timerActive from deps so pause/resume never causes reset
+  }, [mode, durations]);
 
   // Persist state to localStorage on every relevant change
   useEffect(() => {
@@ -152,30 +150,37 @@ function App() {
     return () => clearInterval(checkDay);
   }, []);
 
-  // Timer interval effect
+  // Timer interval effect, guard against double interval and race conditions
   useEffect(() => {
     if (timerActive && intervalRef.current === null) {
       // Start interval if timer is active and not already running
+      console.debug("[Pomodoro] Timer interval effect: timerActive", timerActive, "Starting interval. Current timeLeft:", timeLeft);
       intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft((prev) => {
+          // Only tick if timer is still active!
+          // Prevents ghost tics if paused in the middle of an interval
+          if (!timerActive || prev <= 0) {
+            return prev;
+          }
+          return prev - 1;
+        });
       }, 1000);
-      console.debug("[Pomodoro] Timer interval started!");
     }
     if (!timerActive && intervalRef.current !== null) {
       // Clear interval if timer is not active
+      console.debug("[Pomodoro] Timer interval effect: timerActive is FALSE. Clearing interval. Current timeLeft:", timeLeft);
       clearInterval(intervalRef.current);
       intervalRef.current = null;
-      console.debug("[Pomodoro] Timer interval cleared (paused or stopped)");
     }
     return () => {
       // On unmount or dependency change, always clear interval for safety
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-        console.debug("[Pomodoro] Timer interval cleaned up in effect cleanup");
+        console.debug("[Pomodoro] Timer interval CLEANUP in effect cleanup");
       }
     };
-  }, [timerActive]);
+  }, [timerActive, timeLeft]); // Add timeLeft for robust log context and to ensure ticks don't persist after time up
 
   // Auto-switch session on time up
   useEffect(() => {
@@ -187,15 +192,25 @@ function App() {
 
   // PUBLIC_INTERFACE
   function handleStart() {
-    console.debug("[Pomodoro] Start pressed. Prev timerActive=", timerActive, "timeLeft=", timeLeft);
+    // Prevent starting if already running
+    if (timerActive) {
+      console.debug("[Pomodoro] Start pressed but timer already active. Ignored. timeLeft=", timeLeft);
+      return;
+    }
+    console.debug("[Pomodoro] Start/Resume pressed. Setting timerActive TRUE, no change to timeLeft. Prev timeLeft=", timeLeft);
     setTimerActive(true);
-    // No change to timeLeft; Resume from current value if called after Pause
+    // Do not setTimeLeft here! Always resumes from current.
   }
   // PUBLIC_INTERFACE
   function handlePause() {
-    console.debug("[Pomodoro] Pause pressed. timerActive=", timerActive, "timeLeft (should freeze)=", timeLeft);
+    // Prevent pausing if already paused
+    if (!timerActive) {
+      console.debug("[Pomodoro] Pause pressed but already paused/stopped. Ignored. timeLeft=", timeLeft);
+      return;
+    }
+    console.debug("[Pomodoro] Pause pressed. Setting timerActive FALSE. Preserving current timeLeft =", timeLeft);
     setTimerActive(false);
-    // Do NOT change timeLeft; timer interval effect will clear but value is retained
+    // Never setTimeLeft here.
   }
   // PUBLIC_INTERFACE
   function handleReset() {
@@ -327,7 +342,11 @@ function App() {
                 className="main-btn start"
                 style={{ background: "var(--primary-color)" }}
                 onClick={handleStart}
-              >{(timeLeft < durations[mode] * 60 && timeLeft > 0) ? "Resume" : "Start"}</button>
+              >
+                {(timeLeft < durations[mode] * 60 && timeLeft > 0)
+                  ? "Resume"
+                  : "Start"}
+              </button>
             ) : (
               <button
                 className="main-btn pause"
