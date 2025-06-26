@@ -9,19 +9,59 @@ import ReportDashboard from "./ReportDashboard";
  * Simple generic modal
  * Always mounted, no conditional rendering, toggled via prop/class only.
  */
+const MODAL_BG_CENTER_STYLE = Object.freeze({
+  alignItems: "center",
+  justifyContent: "center"
+});
+
+/**
+ * Modal backdrop click handler - stable by useCallback
+ */
+const useModalBackdropHandler = (onClose) =>
+  React.useCallback(
+    (e) => {
+      if (e.target === e.currentTarget && typeof onClose === "function") onClose();
+    },
+    [onClose]
+  );
+
+/**
+ * PUBLIC_INTERFACE
+ * Generic Modal with stable styles and handlers.
+ */
 function Modal({ open, onClose, title, children, actions }) {
+  // Memoized style (avoid recreating object)
+  const displayStyle = React.useMemo(
+    () => ({
+      display: open ? "flex" : "none",
+      ...MODAL_BG_CENTER_STYLE
+    }),
+    [open]
+  );
+  const handleBackdropClick = useModalBackdropHandler(onClose);
+
+  // Memo so actions array/btns have stable references, preventing unnecessary re-renders
+  const resolvedActions =
+    React.useMemo(
+      () =>
+        actions && actions.length > 0
+          ? actions
+          : [
+              {
+                label: "OK",
+                onClick: onClose,
+                className: "primary-btn",
+                autoFocus: true
+              }
+            ],
+      [actions, onClose]
+    );
+
   return (
     <div
       className={`modal-bg${open ? " modal-bg--active" : ""}`}
-      style={{
-        display: open ? "flex" : "none",
-        alignItems: "center",
-        justifyContent: "center"
-      }}
-      onClick={(e) => {
-        // Only trigger close if user clicked directly on the backdrop, not any descendant (like input)
-        if (e.target === e.currentTarget && typeof onClose === 'function') onClose();
-      }}
+      style={displayStyle}
+      onClick={handleBackdropClick}
       tabIndex={-1}
       aria-modal="true"
       role="dialog"
@@ -30,24 +70,18 @@ function Modal({ open, onClose, title, children, actions }) {
         <h2>{title}</h2>
         <div>{children}</div>
         <div className="modal-actions">
-          {actions && actions.length > 0
-            ? actions.map((a) => (
-                <button
-                  key={a.label + (a.type || "")}
-                  className={a.className || "primary-btn"}
-                  onClick={typeof a.onClick === "function" ? a.onClick : undefined}
-                  type={a.type || "button"}
-                  autoFocus={a.autoFocus || false}
-                  style={a.style}
-                >
-                  {a.label}
-                </button>
-              ))
-            : (
-                <button className="primary-btn" onClick={onClose} autoFocus>
-                  OK
-                </button>
-              )}
+          {resolvedActions.map((a) => (
+            <button
+              key={a.label + (a.type || "")}
+              className={a.className || "primary-btn"}
+              onClick={typeof a.onClick === "function" ? a.onClick : undefined}
+              type={a.type || "button"}
+              autoFocus={a.autoFocus || false}
+              style={a.style}
+            >
+              {a.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -218,28 +252,63 @@ function PomodoroApp() {
     }
   ]), [authMode, handleAuthSubmit]);
 
-  // Always render AuthModal in tree (never conditional). Handlers and all styles hoisted for stable identity.
+  // Always render AuthModal in tree (never conditional). All handler/style refs hoisted for stable identity.
   const authModalRef = useRef(null); // focus target
 
-  // Hoisted styles for control
-  const AUTH_FORM_STYLE = { display: "flex", flexDirection: "column", gap: 16 };
-  const AUTH_INPUT_STYLE = { fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 };
-  const AUTH_FLEX_ROW_STYLE = { display: "flex", gap: 12, alignItems: "center", marginTop: 7 };
-  const AUTH_LINK_BTN_STYLE = { background: "none", border: "none", color: "#d95550", cursor: "pointer" };
-  const AUTH_ERR_STYLE = { color: "#d95550", fontWeight: 500, marginBottom: 2 };
-  const AUTH_LABEL_STYLE = { color: "#999", fontSize: 14 };
+  // Hoisted constant styles (Object.freeze for safety)
+  const AUTH_FORM_STYLE = React.useMemo(() => Object.freeze({
+    display: "flex",
+    flexDirection: "column",
+    gap: 16
+  }), []);
+  const AUTH_INPUT_STYLE = React.useMemo(() => Object.freeze({
+    fontSize: 16,
+    padding: "0.46em",
+    borderRadius: 6,
+    marginBottom: 7
+  }), []);
+  const AUTH_FLEX_ROW_STYLE = React.useMemo(() => Object.freeze({
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+    marginTop: 7
+  }), []);
+  const AUTH_LINK_BTN_STYLE = React.useMemo(() => Object.freeze({
+    background: "none",
+    border: "none",
+    color: "#d95550",
+    cursor: "pointer"
+  }), []);
+  const AUTH_ERR_STYLE = React.useMemo(() => Object.freeze({
+    color: "#d95550",
+    fontWeight: 500,
+    marginBottom: 2
+  }), []);
+  const AUTH_LABEL_STYLE = React.useMemo(() => Object.freeze({
+    color: "#999",
+    fontSize: 14
+  }), []);
 
-  const signUpSwitch = React.useCallback(() => setAuthMode("sign-up"), []);
-  const signInSwitch = React.useCallback(() => setAuthMode("sign-in"), []);
-  const handleEmailChange = React.useCallback(e => {
-    const val = e.target.value;
-    setAuthForm(f => ({ ...f, email: val }));
-  }, []);
-  const handlePasswordChange = React.useCallback(e => {
-    const val = e.target.value;
-    setAuthForm(f => ({ ...f, password: val }));
-  }, []);
+  // Stable handlers (never recreated on re-render)
+  const signUpSwitch = React.useCallback(() => setAuthMode("sign-up"), [setAuthMode]);
+  const signInSwitch = React.useCallback(() => setAuthMode("sign-in"), [setAuthMode]);
+  // These two update inputs; need only update the respective property.
+  const handleEmailChange = React.useCallback(
+    (e) => {
+      const val = e.target.value;
+      setAuthForm(f => ({ ...f, email: val }));
+    },
+    [setAuthForm]
+  );
+  const handlePasswordChange = React.useCallback(
+    (e) => {
+      const val = e.target.value;
+      setAuthForm(f => ({ ...f, password: val }));
+    },
+    [setAuthForm]
+  );
 
+  // AuthModal component with stable handlers
   function AuthModal() {
     useEffect(() => {
       if (showAuthModal && authModalRef.current) {
@@ -319,6 +388,18 @@ function PomodoroApp() {
       </Modal>
     );
   }
+
+  // Floating action button styles (unconditional for React Hooks)
+  const FAB_LEFT_LINK_STYLE = React.useMemo(
+    () => ({
+      transition: "background 0.15s, outline 0.15s",
+      display: "flex",
+      alignItems: "center",
+      textDecoration: "none",
+      color: "inherit"
+    }),
+    []
+  );
 
   return (
     <div className="app-root">
@@ -479,7 +560,7 @@ function PomodoroApp() {
             href="https://pomofocus.io"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ transition: "background 0.15s, outline 0.15s", display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}
+            style={FAB_LEFT_LINK_STYLE}
           >
             <span role="img" aria-label="external">↗️</span> Visit site
           </a>
