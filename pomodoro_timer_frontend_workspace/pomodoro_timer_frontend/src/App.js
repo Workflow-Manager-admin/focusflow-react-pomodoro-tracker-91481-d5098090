@@ -222,18 +222,26 @@ function PomodoroApp() {
   // AuthModal: Remove any key prop, avoid inline arrays/objects, and avoid conditional remount
   const authModalRef = useRef(null); // for focus
 
-  function AuthModal() {
+  // Hoist styles out of component to stable references: prevents inline object identity recreation on each render
+  const AUTH_FORM_STYLE = { display: "flex", flexDirection: "column", gap: 16 };
+  const AUTH_INPUT_STYLE = { fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 };
+  const AUTH_FLEX_ROW_STYLE = { display: "flex", gap: 12, alignItems: "center", marginTop: 7 };
+  const AUTH_LINK_BTN_STYLE = { background: "none", border: "none", color: "#d95550", cursor: "pointer" };
+  const AUTH_ERR_STYLE = { color: "#d95550", fontWeight: 500, marginBottom: 2 };
+  const AUTH_LABEL_STYLE = { color: "#999", fontSize: 14 };
+
+  // The link button handler functions (identities are stable with useCallback)
+  const signUpSwitch = React.useCallback(() => setAuthMode("sign-up"), [setAuthMode]);
+  const signInSwitch = React.useCallback(() => setAuthMode("sign-in"), [setAuthMode]);
+
+  // AuthModal component: use memoization to prevent excessive rerenders, and do not create new styles or arrays in render
+  const AuthModal = React.useCallback(function AuthModalInner() {
     // Focus only on first render/show
     useEffect(() => {
       if (showAuthModal && authModalRef.current) {
         authModalRef.current.focus();
       }
     }, [showAuthModal]);
-    // Styles for use in JSX, declared at component scope, not with useMemo in conditionals
-    const formStyle = { display: "flex", flexDirection: "column", gap: 16 };
-    const inputStyle = { fontSize: 16, padding: "0.46em", borderRadius: 6, marginBottom: 7 };
-    const flexRowStyle = { display: "flex", gap: 12, alignItems: "center", marginTop: 7 };
-    const linkButtonStyle = { background: "none", border: "none", color: "#d95550", cursor: "pointer" };
 
     return (
       <Modal
@@ -244,7 +252,7 @@ function PomodoroApp() {
       >
         <form
           onSubmit={handleAuthSubmit}
-          style={formStyle}
+          style={AUTH_FORM_STYLE}
           autoComplete="on"
         >
           <input
@@ -255,7 +263,7 @@ function PomodoroApp() {
             onChange={e => setAuthForm(f => ({ ...f, email: e.target.value }))}
             autoComplete="username"
             required
-            style={inputStyle}
+            style={AUTH_INPUT_STYLE}
             disabled={authLoading}
             tabIndex={1}
           />
@@ -266,23 +274,23 @@ function PomodoroApp() {
             onChange={e => setAuthForm(f => ({ ...f, password: e.target.value }))}
             autoComplete={authMode === "sign-in" ? "current-password" : "new-password"}
             required
-            style={inputStyle}
+            style={AUTH_INPUT_STYLE}
             disabled={authLoading}
             tabIndex={2}
           />
           {(authLocalError || authError) && (
-            <div style={{ color: "#d95550", fontWeight: 500, marginBottom: 2 }}>
+            <div style={AUTH_ERR_STYLE}>
               {authLocalError || authError?.message}
             </div>
           )}
-          <div style={flexRowStyle}>
+          <div style={AUTH_FLEX_ROW_STYLE}>
             {authMode === "sign-in" ? (
-              <span style={{ color: "#999", fontSize: 14 }}>
+              <span style={AUTH_LABEL_STYLE}>
                 Don't have an account?{" "}
                 <button
                   type="button"
-                  style={linkButtonStyle}
-                  onClick={() => setAuthMode("sign-up")}
+                  style={AUTH_LINK_BTN_STYLE}
+                  onClick={signUpSwitch}
                   disabled={authLoading}
                   tabIndex={3}
                 >
@@ -290,12 +298,12 @@ function PomodoroApp() {
                 </button>
               </span>
             ) : (
-              <span style={{ color: "#999", fontSize: 14 }}>
+              <span style={AUTH_LABEL_STYLE}>
                 Already have an account?{" "}
                 <button
                   type="button"
-                  style={linkButtonStyle}
-                  onClick={() => setAuthMode("sign-in")}
+                  style={AUTH_LINK_BTN_STYLE}
+                  onClick={signInSwitch}
                   disabled={authLoading}
                   tabIndex={3}
                 >
@@ -307,7 +315,20 @@ function PomodoroApp() {
         </form>
       </Modal>
     );
-  }
+  }, [
+    showAuthModal,
+    setShowAuthModal,
+    authMode,
+    authModalActions,
+    handleAuthSubmit,
+    authForm.email,
+    authForm.password,
+    authLoading,
+    authLocalError,
+    authError,
+    signUpSwitch,
+    signInSwitch
+  ]);
 
   return (
     <div className="app-root">
