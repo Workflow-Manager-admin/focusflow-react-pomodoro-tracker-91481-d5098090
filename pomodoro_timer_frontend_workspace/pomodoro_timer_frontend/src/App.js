@@ -283,85 +283,128 @@ function PomodoroApp() {
   );
 
   // --- Hoisted AuthModal implementation ---
-  function AuthModal() {
-    useEffect(() => {
-      if (showAuthModal && authModalRef.current) {
-        authModalRef.current.focus();
-      }
-    }, [showAuthModal]);
-    return (
-      <Modal
-        open={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        title={authMode === "sign-in" ? "Sign In" : "Sign Up"}
-        actions={authModalActions}
-      >
-        <form
-          onSubmit={handleAuthSubmit}
-          style={AUTH_FORM_STYLE}
-          autoComplete="on"
+  /**
+   * AuthModal: Always rendered, fields never unmounted, no key, conditional, or dynamic styles.
+   * Styles come ONLY from static constants, handlers are hoisted and stable, and state lives at parent level.
+   */
+  const AuthModal = React.useMemo(() =>
+    function AuthModalComponent() {
+      // Input refs for UX focus
+      useEffect(() => {
+        if (showAuthModal && authModalRef.current) {
+          authModalRef.current.focus();
+        }
+      }, [showAuthModal]);
+      // Static input styles (never inline/dynamic)
+      // No key, conditional render, or dynamic object instance per render
+      return (
+        <Modal
+          open={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          title={authMode === "sign-in" ? "Sign In" : "Sign Up"}
+          actions={authModalActions}
         >
-          <input
-            ref={authModalRef}
-            type="email"
-            placeholder="Email"
-            value={authForm.email}
-            onChange={handleEmailChange}
-            autoComplete="username"
-            required
-            style={AUTH_INPUT_STYLE}
-            disabled={authLoading}
-            tabIndex={1}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={authForm.password}
-            onChange={handlePasswordChange}
-            autoComplete={authMode === "sign-in" ? "current-password" : "new-password"}
-            required
-            style={AUTH_INPUT_STYLE}
-            disabled={authLoading}
-            tabIndex={2}
-          />
-          {(authLocalError || authError) && (
-            <div style={AUTH_ERR_STYLE}>
-              {authLocalError || authError?.message}
+          <form
+            onSubmit={handleAuthSubmit}
+            style={AUTH_FORM_STYLE}
+            autoComplete="on"
+            // Form is always rendered, field refs managed outside
+          >
+            <div>
+              {/* Email input: always stable */}
+              <input
+                ref={authModalRef}
+                type="email"
+                name="auth-email"
+                placeholder="Email"
+                value={authForm.email}
+                onChange={handleEmailChange}
+                autoComplete="username"
+                required
+                style={AUTH_INPUT_STYLE}
+                disabled={authLoading}
+                tabIndex={1}
+                // No key, no conditional, no dynamic style!
+              />
             </div>
-          )}
-          <div style={AUTH_FLEX_ROW_STYLE}>
-            {authMode === "sign-in" ? (
-              <span style={AUTH_LABEL_STYLE}>
-                Don't have an account?{" "}
-                <button
-                  type="button"
-                  style={AUTH_LINK_BTN_STYLE}
-                  onClick={signUpSwitch}
-                  disabled={authLoading}
-                  tabIndex={3}
-                >
-                  Sign Up
-                </button>
-              </span>
-            ) : (
-              <span style={AUTH_LABEL_STYLE}>
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  style={AUTH_LINK_BTN_STYLE}
-                  onClick={signInSwitch}
-                  disabled={authLoading}
-                  tabIndex={3}
-                >
-                  Sign In
-                </button>
-              </span>
+            <div>
+              {/* Password input: always stable */}
+              <input
+                type="password"
+                name="auth-password"
+                placeholder="Password"
+                value={authForm.password}
+                onChange={handlePasswordChange}
+                autoComplete={authMode === "sign-in" ? "current-password" : "new-password"}
+                required
+                style={AUTH_INPUT_STYLE}
+                disabled={authLoading}
+                tabIndex={2}
+                // No key, no conditional, no dynamic style!
+              />
+            </div>
+            {(authLocalError || authError) && (
+              <div style={AUTH_ERR_STYLE}>
+                {authLocalError || authError?.message}
+              </div>
             )}
-          </div>
-        </form>
-      </Modal>
-    );
-  }
+            <div style={AUTH_FLEX_ROW_STYLE}>
+              {authMode === "sign-in" ? (
+                <span style={AUTH_LABEL_STYLE}>
+                  Don't have an account?{" "}
+                  <button
+                    type="button"
+                    style={AUTH_LINK_BTN_STYLE}
+                    onClick={signUpSwitch}
+                    disabled={authLoading}
+                    tabIndex={3}
+                  >
+                    Sign Up
+                  </button>
+                </span>
+              ) : (
+                <span style={AUTH_LABEL_STYLE}>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    style={AUTH_LINK_BTN_STYLE}
+                    onClick={signInSwitch}
+                    disabled={authLoading}
+                    tabIndex={3}
+                  >
+                    Sign In
+                  </button>
+                </span>
+              )}
+            </div>
+          </form>
+        </Modal>
+      );
+    }, 
+    // Memoize only on static dependencies for handlers/state
+    [
+      showAuthModal, 
+      authMode, 
+      authModalActions, 
+      handleAuthSubmit, 
+      authForm.email, 
+      authForm.password, 
+      handleEmailChange, 
+      handlePasswordChange, 
+      AUTH_FORM_STYLE, 
+      AUTH_INPUT_STYLE, 
+      AUTH_FLEX_ROW_STYLE, 
+      AUTH_LINK_BTN_STYLE, 
+      AUTH_ERR_STYLE, 
+      AUTH_LABEL_STYLE, 
+      signUpSwitch, 
+      signInSwitch, 
+      authModalRef, 
+      authLoading, 
+      authLocalError, 
+      authError
+    ]
+  )();
 
   // Floating action button styles (unconditional for React Hooks)
   const FAB_LEFT_LINK_STYLE = React.useMemo(
