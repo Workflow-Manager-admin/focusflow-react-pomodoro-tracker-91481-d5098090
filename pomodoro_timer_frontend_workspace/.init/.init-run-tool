@@ -1,0 +1,4 @@
+{
+    "command": "PORT=<port> HOST=<host> BROWSER=none npm start",
+    "working_directory": "/home/kavia/workspace/code-generation/focusflow-react-pomodoro-tracker-91481-d5098090/pomodoro_timer_frontend_workspace/pomodoro_timer_frontend"
+}
